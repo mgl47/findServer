@@ -1,5 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const jwt = require('jsonwebtoken');
+
 require("dotenv").config();
 const connect = require("./DB/connect");
 const PORT = 9000;
