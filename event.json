@@ -1,0 +1,93 @@
+{
+  "id": 1,
+  "valid": true,
+  "tickets": [
+    {
+      "description": "Um bilhete",
+      "id": 1,
+      "amount": 3000,
+      "type": "Promo"
+    },
+    {
+      "id": 2,
+      "amount": 5000,
+      "description": "Um bilhete fila da frente e uma garrafa das fas sfa ",
+      "type": "Normal"
+    },
+    {
+      "id": 3,
+      "amount": 10000,
+      "description": "Um bilhete Vip e duas garrafas",
+      "type": "Vip"
+    }
+  ],
+  "artists": [
+    {
+      "id": 1,
+      "displayName": "Djodje",
+      "avatar": "https://scontent.fopo3-2.fna.fbcdn.net/v/t39.30808-6/428464094_947341596747845_1078714768583741406_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeHzh8v4ruoW5c7PY2Rs_ovJhx_hULlX1LyHH-FQuVfUvF5cZdIT8LFccNP9FGNq6x6fitD9qYj4dgBVycplAWwZ&_nc_ohc=fkB9x5507zYAX-5mD96&_nc_ht=scontent.fopo3-2.fna&oh=00_AfB2v4OoRdw9ONhW3UO5PzDHkj44hM4nkMs0vCcZRi-YjQ&oe=65E91414"
+    },
+    {
+      "id": 2,
+      "displayName": "Danni Gato",
+      "avatar": "https://scontent.fopo3-2.fna.fbcdn.net/v/t39.30808-6/303113895_5210438459084661_3774529992445405158_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeF-ilki5ikUpDSdpFpVGoU9UCFjJi9bMmtQIWMmL1syazB-8iH39u4NY4zpBKEulXNkgfoY0TNm0jN5t0yAfjIi&_nc_ohc=dD_0e65yMZoAX-BX7PI&_nc_ht=scontent.fopo3-2.fna&oh=00_AfC_OBrNBsvoECZLNeX76fUD4DL5IBgiCMZijJvC02cU6g&oe=65E93A2E"
+    },
+    {
+      "id": 3,
+      "displayName": "Mc Prego Prego",
+      "avatar": "https://scontent.fopo3-1.fna.fbcdn.net/v/t39.30808-6/428607089_900808212046008_5561323631791397487_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeGMI9qsaDdlv_HIcM8zKwMk7LMeWXb9xFnssx5Zdv3EWRa-qpUmvfhCdgbR8LhkAlr5a2uagL0IS9fgsrt0u_cN&_nc_ohc=mpglxUYRIW8AX9vkQDm&_nc_ht=scontent.fopo3-1.fna&oh=00_AfCqU1KItD3gRS6gP9wbIeY1LHhD596b0Xm21JkOC5__wA&oe=65E9F056"
+    },
+    {
+      "id": 4,
+      "displayName": "Neyna",
+      "avatar": "https://universalmusic.pt/wp-content/uploads/sites/55/2022/04/Neyna.jpg"
+    },
+    {
+      "id": 5,
+      "displayName": "Mc Tranka Fulha",
+      "avatar": "https://scontent.fopo3-1.fna.fbcdn.net/v/t39.30808-6/415028604_1062932538278599_556280435562468150_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeEawNtmh9RfUfZ9_jV1clBO4p4n6Fp2JiLinifoWnYmIuqhUOoefP3DDC11BfEM85O2Uw-xeJjVqIWdKFpt-gSZ&_nc_ohc=S9BRpm7NGa8AX9vwgqY&_nc_ht=scontent.fopo3-1.fna&oh=00_AfA1Jkq3EcQO9WQm0GlSk2LX1nAHf_MkBUBMgkJ52qlNig&oe=65EAEAB1"
+    }
+  ],
+  "going": 74,
+  "title": "Rolling Loud Cv: Edição 2024",
+  "date": "Quarta, 06-08 Jul - 15h00",
+  "description": "Prepare-se para experimentar a fusão definitiva de música, cultura e emoção no Rolling Loud CV 2024! Junte-se a nós para um fim de semana inesquecível de performances sem parar dos artistas mais quentes do hip-hop, rap e além. Dos cabeças de cartaz icônicos aos talentos emergentes, nossa programação promete eletrizar cada momento. Mergulhe nos ritmos pulsantes, na atmosfera vibrante e na energia incomparável enquanto transformamos Cabo Verde no epicentro da cena musical global. Garanta seu lugar agora e faça parte da história sendo feita no Rolling Loud CV 2024!",
+  "city": "Praia",
+  "video": {
+    "id": 1,
+    "uri": "https://firebasestorage.googleapis.com/v0/b/dtudo2-fac2e.appspot.com/o/media%2Frolling.mp4?alt=media&token=8de1dd1c-b324-4522-94f8-ad4207e05c3e"
+  },
+  "photos": [
+    {
+      "id": 1,
+      "uri": "https://d1mnxluw9mpf9w.cloudfront.net/media/13277/Rolling-loud-logo.jpg"
+    },
+    {
+      "id": 2,
+      "uri": "https://d1mnxluw9mpf9w.cloudfront.net/media/13277/Rolling-loud-logo.jpg"
+    },
+    {
+      "id": 3,
+      "uri": "https://d1mnxluw9mpf9w.cloudfront.net/media/13277/Rolling-loud-logo.jpg"
+    },
+    {
+      "id": 4,
+      "uri": "https://d1mnxluw9mpf9w.cloudfront.net/media/13277/Rolling-loud-logo.jpg"
+    }
+  ],
+  "promoter": {
+    "id": 1,
+    "phone1": 9123456,
+    "displayName": "Sigue Sabura",
+    "avatar": "https://scontent.fopo3-1.fna.fbcdn.net/v/t39.30808-6/269756399_4489383877855582_666293188371619723_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeEytTKCsCfMNNYTiAsXRi7Hi7Wb2p15ReOLtZvanXlF4_34YT797OC7nMTFW9KX_v5vwLj9v2FOMB1RONIzN2BS&_nc_ohc=xDS7eBkmKwUAX-_jkG_&_nc_ht=scontent.fopo3-1.fna&oh=00_AfAMK3JK8haPu3p0b2t2DNFWAnN82wtNB4eSMti0N3ENMw&oe=65E97FAE"
+  },
+  "venue": {
+    "id": 1,
+    "displayName": "Kebra Cabana",
+    "city": "Praia",
+    "lat": 14.904463,
+    "long": -23.517431,
+    "uri": "https://scontent.fopo3-1.fna.fbcdn.net/v/t39.30808-6/277743931_5688317584517425_7404246851532435527_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=efb6e6&_nc_eui2=AeFGFWlGhsBPmPONu3bpvGXlxpbOmYh47GfGls6ZiHjsZxGoeLMmWAVQG4b3UZxX3_hUt7KcemVPYfNEf-vx5y0q&_nc_ohc=sTcHo3xDP8UAX9KWrYs&_nc_ht=scontent.fopo3-1.fna&oh=00_AfDHNQvMtUnyuQb03LTtA5Ky7F2P1wN9ezkbp-GxZsI3NA&oe=65E95566"
+  },
+  "Category": "Music"
+}
