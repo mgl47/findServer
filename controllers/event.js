@@ -1,5 +1,23 @@
 const eventSchema = require("../models/event");
+const venueSchema = require("../models/venue");
+const createVenue = async (req, res) => {
+  const user = req.user;
+  console.log(req.body);
+  const newVenue = {
+    ...req.body,
+    createdBy: user.userId,
+  };
 
+  // const queryFilter=
+  try {
+    const venue = await venueSchema.create(newVenue);
+
+   return res.status(200).json(venue);
+  } catch (error) {
+    console.log(error);
+    return res.status(401).json({ msg: "Error retrieving token" });
+  }
+};
 const createEvent = async (req, res) => {
   const user = req.user;
 
@@ -21,10 +39,11 @@ const updateEvent = async (req, res) => {
   const { id } = req.params;
   const newChanges = req.body;
   const user = req.user;
+  console.log(user);
   try {
     const event = await eventSchema.findById(id);
     if (event) {
-      if (event.createdBy._id == user.userId) {
+      if (event.createdBy.userId == user.userId) {
         await event.updateOne(newChanges);
         return res.status(200).json({ msg: "Event updated!" });
       }
@@ -43,7 +62,7 @@ const deleteEvent = async (req, res) => {
   try {
     const event = await eventSchema.findById(id);
     if (event) {
-      if (event.createdBy._id == user.userId) {
+      if (event.createdBy.userId == user.userId) {
         await event.deleteOne();
         return res.status(200).json({ msg: "Event deleted!" });
       }
@@ -60,4 +79,4 @@ const creaasteEvent = async (req, res) => {};
 
 const creassateEvent = async (req, res) => {};
 
-module.exports = { createEvent, deleteEvent, updateEvent };
+module.exports = { createEvent, deleteEvent, updateEvent, createVenue };

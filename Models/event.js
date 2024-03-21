@@ -36,8 +36,11 @@ const eventSchema = new mongoose.Schema({
   photos: {
     type: Array,
   },
-  promoters: {
+  organizers: {
     type: Array,
+  },
+  venue: {
+    type: Object,
   },
   createdBy: {
     type: Object,
