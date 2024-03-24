@@ -11,21 +11,21 @@ const PORT = 9000;
 const dbURl = process.env.DB_URL;
 const app = express();
 //Routers
-const eventsRouter= require("./routes/events");
-const venuesRouter= require("./routes/venues");
+const eventsRouter = require("./routes/events");
+const venuesRouter = require("./routes/venues");
 
 const authRouter = require("./routes/auth");
 const userRouter = require("./routes/user");
 const authenticateUser = require("./middlewares/user");
+const purchaseRouter = require("./routes/purchase");
 app.use(cors());
 app.use(express.json());
 
 app.use("/api/events", eventsRouter);
 app.use("/api/venues", venuesRouter);
-
-
 app.use("/api/auth", authRouter);
 app.use("/api/user", authenticateUser, userRouter);
+app.use("/api/purchase", authenticateUser, purchaseRouter);
 
 // app.get('/send', sendEmail);
 

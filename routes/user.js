@@ -7,18 +7,22 @@ const {
   updateEvent,
   createVenue,
 } = require("../controllers/event");
-const {getInfo, updateUser, deleteAccount } = require("../controllers/user");
+const { getInfo, updateUser, deleteAccount } = require("../controllers/user");
 
+//get,update,delete current user
+userRouter
+  .route("/current/:id")
+  .get(getInfo)
+  .patch(updateUser)
+  .delete(deleteAccount);
 
-
-userRouter.route("/current/:id").get(getInfo).patch(updateUser).delete(deleteAccount)
-
-
-// userRouter.route("/likeEvent").patch(likeEvent);
-// userRouter.route("/likeUser").patch(likeUser);
-// userRouter.route("/likeVenue").patch(likeVenue);
-
+//create, edit, delete event by a user
 userRouter.route("/event").post(createEvent);
 userRouter.route("/event/:id").patch(updateEvent).delete(deleteEvent);
+
+//creata venue by a user
 userRouter.route("/venue").post(createVenue);
+
+//purchase a ticket by a user
+
 module.exports = userRouter;
