@@ -3,28 +3,19 @@ const { updateUser } = require("../controllers/user");
 
 const buyTickets = async (req, res, next) => {
   const { id } = req.params;
-
   const user = req.user;
-
-  // operation: {
-  //   type: "eventStatus",
-  //   task: "going",
-  //   eventId: Event?._id,
-  // },
-  // updates: {
-  //   likedEvents: updateInterested,
-  //   goingToEvents: updatedGoing,
-  // },
-  // console.log(req.body?.userUpdates);
-
   const purchaseDetails = req.body.details;
 
   try {
+    const eventticket = req.body?.userUpdates.eventTicket;
+
     const newPurchase = await purchaseSchema.create(purchaseDetails);
 
     const userUpdates = req.body?.userUpdates;
     req.body.updates = userUpdates.updates;
     req.body.operation = userUpdates.operation;
+    req.body.eventTicket = userUpdates.eventTicket;
+
     req.params.id = req.user.userId;
 
     updateUser(req, res, next);

@@ -19,12 +19,19 @@ const eventSchema = new mongoose.Schema(
     artists: {
       type: Array,
     },
+    buyers: {
+      type: Array,
+    },
     interestedUsers: {
       type: Array,
     },
     goingUsers: {
       type: Array,
     },
+    attendees: {
+      type: Array,
+    },
+
     category: {
       type: String,
     },
@@ -40,11 +47,17 @@ const eventSchema = new mongoose.Schema(
     organizers: {
       type: Array,
     },
+    staff: {
+      type: Array,
+    },
     venue: {
       type: Object,
     },
     createdBy: {
       type: Object,
+    },
+    creatorId: {
+      type: String,
     },
   },
   { timestamps: true }

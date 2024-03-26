@@ -15,13 +15,9 @@ const register = async (req, res) => {
 
     if (existingUser) {
       if (existingUser.username === username) {
-        return res
-          .status(500)
-          .json({ msg: "Nome de usuário não disponível!" });
+        return res.status(500).json({ msg: "Nome de usuário não disponível!" });
       } else {
-        return res
-          .status(500)
-          .json({ msg: "Este email já foi utilizado!" });
+        return res.status(500).json({ msg: "Este email já foi utilizado!" });
       }
     }
 
@@ -32,7 +28,7 @@ const register = async (req, res) => {
       {}
     );
 
-    return res.status(200).json({token,user});
+    return res.status(200).json({ token, user });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Error registering the user" });
@@ -44,26 +40,34 @@ const login = async (req, res) => {
   const query = {
     $or: [{ username: username }, { email: username }],
   };
+
   try {
     const existingUser = await userSchema.findOne(query);
 
-    if (existingUser) {
-      const isMatch = await bcrypt.compare(password, existingUser.password);
+    if (!existingUser) {
+      return res.status(500).json({ msg: "Este usuário não existe!" });
+    }
 
-      if (isMatch) {
-        const token = jwt.sign(
-          { userId: existingUser._id, username },
-          JWT_SECRET,
-          {}
-        );
-        return res.status(200).json({token,user:existingUser});
-      }
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+
+    if (!isMatch) {
       return res.status(500).json({ msg: "Palavra passe errada!" });
     }
-    return res.status(500).json({ msg: "Este usuário não existe!" });
+
+    const token = jwt.sign(
+      { userId: existingUser._id, username },
+      JWT_SECRET,
+      {}
+    );
+
+    // Avoid sending the user's password in the response
+    const userWithoutPassword = { ...existingUser.toObject() };
+    delete userWithoutPassword.password;
+
+    return res.status(200).json({ token, user: userWithoutPassword });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "error getting the user" });
+    console.error("Error logging in:", error);
+    return res.status(500).json({ message: "Error logging in" });
   }
 };
 

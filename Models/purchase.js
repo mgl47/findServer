@@ -5,6 +5,9 @@ const purchaseSchema = new mongoose.Schema(
     uuid: {
       type: String,
     },
+    purchaseId: {
+      type: String,
+    },
     event: {
       type: Object,
     },

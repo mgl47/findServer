@@ -1,23 +1,27 @@
 const userSchema = require("../models/user");
 const eventSchema = require("../models/event");
 
-
-
-
-
 // const likeVenue = async (req, res) => {};
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const newChanges = req.body?.updates;
+  let newChanges = req.body?.updates;
   const operation = req.body?.operation;
-  const user = req.user;
-  console.log(req.params)
+  const currentUser = req.user;
+  const eventTicket = req?.body?.eventTicket;
 
   try {
-    const currentUser = await userSchema.findById(id);
-    if (currentUser) {
-      if (currentUser._id == user.userId) {
-        await currentUser.updateOne(newChanges);
+    const user = await userSchema.findById(id);
+    if (user) {
+      if (user._id == currentUser.userId) {
+        if (operation.task === "purchase") {
+          let newTicket = user?.purchasedTickets;
+          newTicket.push(eventTicket);
+          // console.log(newTicket);
+          newChanges = { ...newChanges, purchasedTickets: newTicket };
+        }
+
+        await user.updateOne(newChanges);
+
         if (operation?.type == "eventStatus") {
           addToEvent(req);
         }
@@ -40,17 +44,19 @@ const getInfo = async (req, res) => {
   const { id } = req.params;
   const currentUser = req.user;
 
-  //   console.log(user?._id);
   try {
     const user = await userSchema.findById(id);
-    if (user) {
-      if (user._id == currentUser.userId) {
-        // await user.updateOne(newChanges);
-        return res.status(200).json(user);
-      }
+
+    if (!user) {
+      return res.status(404).json({ msg: "user not found!" });
+    }
+
+    if (user._id != currentUser.userId) {
       return res.status(401).json({ msg: "Wrong User!" });
     }
-    return res.status(404).json({ msg: "user not found!" });
+    const userWithoutPassword = { ...user.toObject() };
+    delete userWithoutPassword.password;
+    return res.status(200).json(userWithoutPassword);
   } catch (error) {
     console.log(error);
     return res.status(401).json({ msg: "Error retrieving token" });
@@ -62,66 +68,68 @@ const addToEvent = async (req, res) => {
   const currentUser = req.user;
 
   if (!operation || !operation.task || !operation.eventId) {
-    return;
+    return res.status(400).json({ error: "Missing operation details" });
   }
 
   const selectedEvent = await eventSchema.findById(operation.eventId);
-
   if (!selectedEvent) {
-    return;
+    return res.status(404).json({ error: "Event not found" });
   }
 
   let updateQuery = {};
-  let updateInterested = [];
-  let updateGoingUsers = [];
-  updateInterested = selectedEvent.interestedUsers || [];
-  updateGoingUsers = selectedEvent.goingUsers || [];
+  let updateInterested = [...selectedEvent.interestedUsers];
+  let updateGoingUsers = [...selectedEvent.goingUsers];
 
-  if (operation.task === "interest") {
-    const index = updateInterested.indexOf(currentUser.userId);
+  if (operation.task === "interest" || operation.task === "going") {
+    const targetArray =
+      operation.task === "interest" ? updateInterested : updateGoingUsers;
+    const index = targetArray.indexOf(currentUser.userId);
     if (index !== -1) {
-      updateInterested.splice(index, 1); // Remove user from interested list
+      targetArray.splice(index, 1); // Remove user from the list
     } else {
-      updateInterested.push(currentUser.userId); // Add user to interested list
-
-      if (selectedEvent.goingUsers?.includes(Event?._id)) {
-        const index = updateGoingUsers.indexOf(Event?._id);
-        if (index !== -1) {
-          // setGoing(false);
-          updateGoingUsers.splice(index, 1);
-        }
+      targetArray.push(currentUser.userId); // Add user to the list
+      if (
+        operation.task === "interest" &&
+        updateGoingUsers.includes(currentUser.userId)
+      ) {
+        const goingIndex = updateGoingUsers.indexOf(currentUser.userId);
+        updateGoingUsers.splice(goingIndex, 1);
+      } else if (
+        operation.task === "going" &&
+        updateInterested.includes(currentUser.userId)
+      ) {
+        const interestIndex = updateInterested.indexOf(currentUser.userId);
+        updateInterested.splice(interestIndex, 1);
       }
     }
-    // updateQuery = { interestedUsers: updateInterested };
-  } else if (operation.task === "going") {
+    updateQuery = {
+      goingUsers: updateGoingUsers,
+      interestedUsers: updateInterested,
+    };
+  } else if (operation.task === "purchase") {
+    if (selectedEvent.interestedUsers?.includes(currentUser.userId)) {
+      const index = updateInterested.indexOf(currentUser.userId);
+      if (index !== -1) {
+        updateInterested.splice(index, 1); // Remove user from interested list
+      }
+    }
     const index = updateGoingUsers.indexOf(currentUser.userId);
-    if (index !== -1) {
-      console.log("going");
-
-      updateGoingUsers.splice(index, 1); // Remove user from going list
-    } else {
-      updateGoingUsers.push(currentUser.userId);
-
-      if (selectedEvent.interestedUsers?.includes(Event?._id)) {
-        const index = updateInterested.indexOf(Event?._id);
-        if (index !== -1) {
-          // setGoing(false);
-          updateInterested.splice(index, 1);
-        }
-      }
+    if (index == -1) {
+      updateGoingUsers.push(currentUser.userId); // add user to going list
     }
-    // updateQuery = { goingUsers: updateGoingUsers };
+    const eventTicket = req.body.eventTicket;
+    let newAttendees = selectedEvent?.attendees;
+    newAttendees.push(...eventTicket?.tickets);
+
+    updateQuery = {
+      goingUsers: updateGoingUsers,
+      interestedUsers: updateInterested,
+      attendees: newAttendees,
+    };
   }
-  updateQuery = {
-    goingUsers: updateGoingUsers,
-    interestedUsers: updateInterested,
-  };
+
   try {
-    await eventSchema.findOneAndUpdate(
-      { _id: operation.eventId },
-      { $set: updateQuery },
-      { new: true }
-    );
+    await selectedEvent.updateOne({ $set: updateQuery }, { new: true });
   } catch (error) {
     console.error("Error updating event:", error);
   }

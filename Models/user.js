@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
+    purchasedTickets: {
+      type: Array,
+      default: [],
+    },
+    
   },
   { timestamps: true }
 );
