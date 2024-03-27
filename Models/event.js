@@ -13,6 +13,9 @@ const eventSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    ticketsLimit: {
+      type: Array,
+    },
     tickets: {
       type: Array,
     },
@@ -48,6 +51,9 @@ const eventSchema = new mongoose.Schema(
       type: Array,
     },
     staff: {
+      type: Array,
+    },
+    staffIds: {
       type: Array,
     },
     venue: {

@@ -62,7 +62,10 @@ const updateEvent = async (req, res) => {
     }
     if (operation?.type === "eventStatus" && operation?.task === "staff") {
       console.log(newChanges);
-      await event.updateOne({ staff: newChanges });
+      await event.updateOne({
+        staff: newChanges?.newStaff,
+        staffIds: newChanges?.newStaffId,
+      });
     }
 
     // await event.updateOne(newChanges);
@@ -132,15 +135,22 @@ const checkInAttendee = async (event, newChanges) => {
 };
 
 const getMyEvents = async (req, res) => {
+  const { userId } = req.user;
+
+  console.log(userId);
+  
   try {
-    const currentUser = req.user;
-
-    const events = await eventSchema.find({ creatorId: currentUser?.userId });
-
+    const events = await eventSchema.find({
+      $or: [
+        { staffIds: userId },
+        { creatorId: userId }
+      ]
+    });
+  
     return res.status(200).json(events);
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ msg: "Internal Server Error" });
+    console.error("Error fetching events:", error);
+    return res.status(500).json({ message: "Error fetching events" });
   }
 };
 

@@ -125,6 +125,7 @@ const addToEvent = async (req, res) => {
       goingUsers: updateGoingUsers,
       interestedUsers: updateInterested,
       attendees: newAttendees,
+      tickets:req.body.updatedEventTickets
     };
   }
 
