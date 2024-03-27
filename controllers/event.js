@@ -1,6 +1,7 @@
 const eventSchema = require("../models/event");
 const venueSchema = require("../models/venue");
 const userSchema = require("../models/user");
+const purchaseSchema = require("../models/purchase");
 
 const createVenue = async (req, res) => {
   const user = req.user;
@@ -23,7 +24,11 @@ const createEvent = async (req, res) => {
 
   const newEvent = {
     ...req.body,
-    createdBy: { ...req.body.createdBy, userId: user.userId },
+    createdBy: {
+      ...req.body.createdBy,
+      userId: user.userId,
+      username: user.username,
+    },
   };
 
   try {
@@ -55,8 +60,11 @@ const updateEvent = async (req, res) => {
     if (operation?.type === "eventAttendees" && operation?.task === "checkIn") {
       await checkInAttendee(event, newChanges);
     }
+    if (operation?.type === "eventStatus" && operation?.task === "staff") {
+      console.log(newChanges);
+      await event.updateOne({ staff: newChanges });
+    }
 
-    // Update other fields if needed
     // await event.updateOne(newChanges);
 
     return res.status(200).json({ msg: "Event updated!" });
@@ -72,6 +80,9 @@ const checkInAttendee = async (event, newChanges) => {
     .getMinutes()
     .toString()
     .padStart(2, "0")}`;
+
+  //Update ticket in events's attendees list
+
   const newAttendees = event.attendees.map((item) => {
     if (item.uuid === newChanges?.ticketUser?.uuid) {
       return {
@@ -84,21 +95,40 @@ const checkInAttendee = async (event, newChanges) => {
     return item;
   });
   await event.updateOne({ attendees: newAttendees });
+
+  //Update ticket in user's purchased tickets
   const user = await userSchema.findOne({
     username: newChanges?.ticketUser?.username,
   });
-//Update ticket in user's purchased Tickets
-  const updatedPurchases = user.purchasedTickets.map((purchases) => {
+  const updatedUserPurchases = user.purchasedTickets.map((purchases) => {
     const newTickets = purchases?.tickets?.map((item) => {
       if (item?.uuid == newChanges?.ticketUser?.uuid) {
-
         return { ...item, checkedIn: true, checkedAt: time, arrivalTime: now };
       } else return { ...item };
     });
 
     return { ...purchases, tickets: newTickets };
   });
-  await user.updateOne({ purchasedTickets: updatedPurchases });
+  await user.updateOne({ purchasedTickets: updatedUserPurchases });
+  //Update ticket in purchase's
+  const purchase = await purchaseSchema.findOne({
+    purchaseId: newChanges?.ticketUser?.purchaseId,
+  });
+
+  // console.log(newChanges?.ticketUser?.purchaseId);
+
+  const updatedTickets = purchase?.tickets?.map((item) => {
+    if (item?.uuid == newChanges?.ticketUser?.uuid) {
+      return { ...item, checkedIn: true, checkedAt: time, arrivalTime: now };
+    } else return { ...item };
+  });
+  // console.log({ ...purchase, tickets: updatedTickets });
+
+  const updatedPurchase = await purchaseSchema.findOneAndUpdate(
+    { purchaseId: newChanges?.ticketUser?.purchaseId },
+    { $set: { tickets: updatedTickets } },
+    { new: true }
+  );
 };
 
 const getMyEvents = async (req, res) => {
