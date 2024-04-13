@@ -1,11 +1,25 @@
 const venuesSchema = require("../models/venue");
 
 const venues = async (req, res) => {
+  const { filter, island } = req.query;
+  const queryFilter = {};
 
+  if (filter) {
+    queryFilter.uuid = filter;
+  }
 
-  // const queryFilter={active:true}
+  console.log(queryFilter);
+
   try {
-    const venues = await venuesSchema.find({});
+    let venues;
+    if (island) {
+      venues = await venuesSchema.find({
+        $and: [queryFilter, island && { "address.island.code": island }],
+      });
+    } else {
+      venues = await venuesSchema.find(queryFilter);
+    }
+    console.log(venues);
 
     return res.status(200).json(venues);
   } catch (error) {
@@ -13,6 +27,5 @@ const venues = async (req, res) => {
     return res.status(401).json({ msg: "Error retrieving token" });
   }
 };
-
 
 module.exports = { venues };

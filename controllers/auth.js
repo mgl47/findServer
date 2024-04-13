@@ -15,9 +15,9 @@ const register = async (req, res) => {
 
     if (existingUser) {
       if (existingUser.username === username) {
-        return res.status(500).json({ msg: "Nome de usuário não disponível!" });
+        return res.status(500).json({msg:"Nome de usuário não disponível!"});
       } else {
-        return res.status(500).json({ msg: "Este email já foi utilizado!" });
+        return res.status(500).json({msg:"Este email já foi utilizado!"});
       }
     }
 
@@ -31,7 +31,7 @@ const register = async (req, res) => {
     return res.status(200).json({ token, user });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Error registering the user" });
+    return res.status(500).json({msg:"Error registering the user"});
   }
 };
 const login = async (req, res) => {
@@ -45,13 +45,13 @@ const login = async (req, res) => {
     const existingUser = await userSchema.findOne(query);
 
     if (!existingUser) {
-      return res.status(500).json({ msg: "Este usuário não existe!" });
+      return res.status(500).json({msg:"Este usuário não existe!"});
     }
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
 
     if (!isMatch) {
-      return res.status(500).json({ msg: "Palavra passe errada!" });
+      return res.status(500).json({msg:"Palavra passe errada!"});
     }
 
     const token = jwt.sign(
@@ -66,8 +66,8 @@ const login = async (req, res) => {
 
     return res.status(200).json({ token, user: userWithoutPassword });
   } catch (error) {
-    console.error("Error logging in:", error);
-    return res.status(500).json({ message: "Error logging in" });
+    console.log("Error logging in:", error);
+    return res.status(500).json({msg:"Error logging in"});
   }
 };
 

@@ -14,7 +14,7 @@ const purchaseSchema = new mongoose.Schema(
     eventId: {
       type: String,
     },
-    
+
     buyer: {
       type: Object,
     },
@@ -24,6 +24,9 @@ const purchaseSchema = new mongoose.Schema(
     type: {
       type: String,
     },
+    uri: {
+      type: String,
+    },
 
     tickets: {
       type: Array,
@@ -31,6 +34,9 @@ const purchaseSchema = new mongoose.Schema(
     total: {
       type: Number,
     },
+    createdAt: { type: Date },
+
+    updatedAt: { type: Date },
   },
   { timestamps: true }
 );

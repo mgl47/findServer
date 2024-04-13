@@ -26,6 +26,9 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: Array,
     },
+    balance: {
+      type: Object,
+    },
     socials: {
       type: Object,
     },
@@ -40,11 +43,20 @@ const userSchema = new mongoose.Schema(
       type: Array,
       default: [],
     },
-    purchasedTickets: {
+    followers: {
       type: Array,
-      default: [],
+    },
+    followedArtists: {
+      type: Array,
+    },
+  followedVenues: {
+      type: Array,
     },
     
+    // purchasedTickets: {
+    //   type: Array,
+    //   default: [],
+    // },
   },
   { timestamps: true }
 );

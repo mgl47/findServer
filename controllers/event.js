@@ -14,8 +14,8 @@ const createVenue = async (req, res) => {
     const venue = await venueSchema.create(newVenue);
     return res.status(200).json(venue);
   } catch (error) {
-    console.error("Error creating new venue:", error);
-    return res.status(500).json({ message: "Error creating new venue" });
+    console.log("Error creating new venue:", error);
+    return res.status(500).json({ msg: "Error creating new venue" });
   }
 };
 
@@ -35,8 +35,8 @@ const createEvent = async (req, res) => {
     const event = await eventSchema.create(newEvent);
     return res.status(200).json(event);
   } catch (error) {
-    console.error("Error creating new event:", error);
-    return res.status(500).json({ message: "Error creating new event" });
+    console.log("Error creating new event:", error);
+    return res.status(500).json({ msg: "Error creating new event" });
   }
 };
 
@@ -61,7 +61,7 @@ const updateEvent = async (req, res) => {
       await checkInAttendee(event, newChanges);
     }
     if (operation?.type === "eventStatus" && operation?.task === "staff") {
-      console.log(newChanges);
+      // console.log(newChanges);
       await event.updateOne({
         staff: newChanges?.newStaff,
         staffIds: newChanges?.newStaffId,
@@ -77,80 +77,78 @@ const updateEvent = async (req, res) => {
   }
 };
 
-const checkInAttendee = async (event, newChanges) => {
-  const now = new Date();
-  const time = `${now.getHours().toString().padStart(2, "0")}:${now
-    .getMinutes()
-    .toString()
-    .padStart(2, "0")}`;
+const checkInAttendee = async (event, changes) => {
+  try {
+    const now = new Date();
+    const time = `${now.getHours().toString().padStart(2, "0")}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
 
-  //Update ticket in events's attendees list
-
-  const newAttendees = event.attendees.map((item) => {
-    if (item.uuid === newChanges?.ticketUser?.uuid) {
-      return {
-        ...item,
-        checkedIn: true,
-        checkedAt: time,
-        arrivalTime: now,
-      };
-    }
-    return item;
-  });
-  await event.updateOne({ attendees: newAttendees });
-
-  //Update ticket in user's purchased tickets
-  const user = await userSchema.findOne({
-    username: newChanges?.ticketUser?.username,
-  });
-  const updatedUserPurchases = user.purchasedTickets.map((purchases) => {
-    const newTickets = purchases?.tickets?.map((item) => {
-      if (item?.uuid == newChanges?.ticketUser?.uuid) {
-        return { ...item, checkedIn: true, checkedAt: time, arrivalTime: now };
-      } else return { ...item };
+    // Update event attendees
+    const updatedAttendees = event.attendees.map((attendee) => {
+      if (attendee.uuid === changes.ticketUser.uuid) {
+        return {
+          ...attendee,
+          checkedIn: true,
+          checkedAt: time,
+          arrivalTime: now,
+        };
+      }
+      return attendee;
     });
+    await event.updateOne({ attendees: updatedAttendees });
 
-    return { ...purchases, tickets: newTickets };
-  });
-  await user.updateOne({ purchasedTickets: updatedUserPurchases });
-  //Update ticket in purchase's
-  const purchase = await purchaseSchema.findOne({
-    purchaseId: newChanges?.ticketUser?.purchaseId,
-  });
 
-  // console.log(newChanges?.ticketUser?.purchaseId);
-
-  const updatedTickets = purchase?.tickets?.map((item) => {
-    if (item?.uuid == newChanges?.ticketUser?.uuid) {
-      return { ...item, checkedIn: true, checkedAt: time, arrivalTime: now };
-    } else return { ...item };
-  });
-  // console.log({ ...purchase, tickets: updatedTickets });
-
-  const updatedPurchase = await purchaseSchema.findOneAndUpdate(
-    { purchaseId: newChanges?.ticketUser?.purchaseId },
-    { $set: { tickets: updatedTickets } },
-    { new: true }
-  );
+    const purchase = await purchaseSchema.findOne({
+      purchaseId: changes.ticketUser.purchaseId,
+    });
+    const updatedTickets = purchase.tickets.map((ticket) => {
+      if (ticket.uuid === changes.ticketUser.uuid) {
+        return {
+          ...ticket,
+          checkedIn: true,
+          checkedAt: time,
+          arrivalTime: now,
+        };
+      }
+      return ticket;
+    });
+    await purchaseSchema.findOneAndUpdate(
+      { purchaseId: changes.ticketUser.purchaseId },
+      { $set: { tickets: updatedTickets } },
+      { new: true }
+    );
+  } catch (error) {
+    console.error("Error checking in attendee:", error);
+  }
 };
 
 const getMyEvents = async (req, res) => {
   const { userId } = req.user;
 
-  console.log(userId);
-  
   try {
     const events = await eventSchema.find({
-      $or: [
-        { staffIds: userId },
-        { creatorId: userId }
-      ]
+      $or: [{ staffIds: userId }, { creatorId: userId }],
     });
-  
+
     return res.status(200).json(events);
   } catch (error) {
-    console.error("Error fetching events:", error);
-    return res.status(500).json({ message: "Error fetching events" });
+    console.log("Error fetching events:", error);
+    return res.status(500).json({ msg: "Error fetching events" });
+  }
+};
+const getOneEvent = async (req, res) => {
+  const { userId } = req.user;
+  const { eventId } = req.query;
+
+  try {
+    const event = await eventSchema.findById(eventId);
+
+    return res.status(200).json(event);
+  } catch (error) {
+    console.log("Error fetching events:", error);
+    return res.status(500).json({ msg: "Error fetching events" });
   }
 };
 
@@ -182,4 +180,5 @@ module.exports = {
   updateEvent,
   createVenue,
   getMyEvents,
+  getOneEvent,
 };

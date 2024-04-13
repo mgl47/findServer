@@ -23,6 +23,12 @@ const venueSchema = new mongoose.Schema(
     address: {
       type: Object,
     },
+    location: {
+      type: Object,
+    },
+    followers: {
+      type: Array,
+    },
   },
   { timestamps: true }
 );

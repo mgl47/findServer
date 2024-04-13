@@ -5,8 +5,8 @@ const events = async (req, res) => {
     const events = await eventSchema.find({});
     return res.status(200).json(events);
   } catch (error) {
-    console.error("Error retrieving events:", error);
-    return res.status(500).json({ message: "Error retrieving events" });
+    console.log("Error retrieving events:", error);
+    return res.status(500).json({ msg: "Error retrieving events" });
   }
 };
 

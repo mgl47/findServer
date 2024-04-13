@@ -22,9 +22,7 @@ const eventSchema = new mongoose.Schema(
     artists: {
       type: Array,
     },
-    buyers: {
-      type: Array,
-    },
+
     interestedUsers: {
       type: Array,
     },
@@ -65,6 +63,7 @@ const eventSchema = new mongoose.Schema(
     creatorId: {
       type: String,
     },
+    store: { type: Array },
   },
   { timestamps: true }
 );
