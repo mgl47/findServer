@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
     },
+    uuid: {
+      type: String,
+    },
     email: {
       type: String,
       lowercase: true,
@@ -33,6 +36,9 @@ const userSchema = new mongoose.Schema(
       type: Object,
     },
     medias: {
+      type: Object,
+    },
+    status: {
       type: Object,
     },
     likedEvents: {

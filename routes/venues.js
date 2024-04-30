@@ -1,7 +1,8 @@
 const express=require("express")
-const {venues}=require("../controllers/venues")
+const {venues,nearbyVenues}=require("../controllers/venues")
 
 const venuesRouter =express.Router()
+venuesRouter.route("/near").get(nearbyVenues)
 
 venuesRouter.route("/").get(venues)
 

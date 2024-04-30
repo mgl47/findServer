@@ -14,6 +14,10 @@ const venueSchema = new mongoose.Schema(
     createdBy: {
       type: String,
     },
+    mapSnap: {
+      type: String,
+    },
+    
     phone: {
       type: Array,
     },
@@ -24,13 +28,26 @@ const venueSchema = new mongoose.Schema(
       type: Object,
     },
     location: {
-      type: Object,
+      type: {
+        type: String,
+        enum: ["Point"], // Only "Point" type is allowed
+        required: true,
+      },
+      coordinates: {
+        type: [Number], // Array of two numbers: [longitude, latitude]
+        required: true,
+      },
     },
     followers: {
       type: Array,
     },
+    activeEvents: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
+venueSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("venue", venueSchema);

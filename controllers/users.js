@@ -14,7 +14,7 @@ const users = async (req, res) => {
 
     const userWithoutPassword = { ...user.toObject() };
     delete userWithoutPassword.password;
-    delete userWithoutPassword.userDescription;
+    // delete userWithoutPassword.userDescription;
     delete userWithoutPassword.purchasedTickets;
 
     return res.status(200).json(userWithoutPassword);

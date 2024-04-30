@@ -13,8 +13,8 @@ const eventSchema = new mongoose.Schema(
     description: {
       type: String,
     },
-    ticketsLimit: {
-      type: Array,
+    haltedSales: {
+      type: Boolean,
     },
     tickets: {
       type: Array,

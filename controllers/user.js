@@ -38,29 +38,29 @@ const updateUser = async (req, res) => {
     if (operation?.type === "eventStatus") {
       addToEvent(req);
     }
-
   } catch (error) {
     console.error("Error updating user:", error);
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
 
-
-
-
 const deleteAccount = async (req, res) => {};
 
 const getInfo = async (req, res) => {
-  const { id } = req.params;
   const currentUser = req.user;
   try {
     const purchases = await purchaseSchema
-      .find({ "buyer.userId": id })
+      .find({ "user.endUser.userId": currentUser?.userId })
       .sort({ createdAt: -1 });
-    const events = await eventSchema.find({
-      $or: [{ staffIds: id }, { "createdBy.userId": id }],
-    });
-    const user = await userSchema.findById(id);
+    const events = await eventSchema
+      .find({
+        $or: [
+          { "staff._id": currentUser?.userId },
+          { "createdBy.userId": currentUser?.userId },
+        ],
+      })
+      .sort({ createdAt: -1 });
+    const user = await userSchema.findById(currentUser?.userId);
 
     if (!user) {
       return res.status(404).json({ msg: "user not found!" });
@@ -106,7 +106,9 @@ const toggleFollow = async (req, res) => {
 
 const updateUserBalance = async (userId, operation, amount) => {
   const updateAmount = operation.task === "topUp" ? amount : -amount;
-  await userSchema.findByIdAndUpdate(userId, { $inc: { "balance.amount": updateAmount } });
+  await userSchema.findByIdAndUpdate(userId, {
+    $inc: { "balance.amount": updateAmount },
+  });
 };
 
 const addToEvent = async (req, res) => {
@@ -181,7 +183,6 @@ const addToEvent = async (req, res) => {
   }
 };
 
-
 const registerArtist = async (req, res) => {
   const { email, username } = req.body.updates;
   console.log(username);
@@ -202,12 +203,11 @@ const registerArtist = async (req, res) => {
     // }
 
     const user = await userSchema.create({ ...req.body.updates });
-  
 
     return res.status(200).json(user);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({msg:"Error registering the user"});
+    return res.status(500).json({ msg: "Error registering the user" });
   }
 };
-module.exports = { getInfo, updateUser, deleteAccount,registerArtist };
+module.exports = { getInfo, updateUser, deleteAccount, registerArtist };

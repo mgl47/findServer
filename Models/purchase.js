@@ -18,11 +18,17 @@ const purchaseSchema = new mongoose.Schema(
     buyer: {
       type: Object,
     },
+    user: {
+      type: Object,
+    },
     cardDetails: {
       type: Object,
     },
     type: {
       type: String,
+    },
+    validated: {
+      type: String, 
     },
     uri: {
       type: String,
