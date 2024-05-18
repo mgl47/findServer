@@ -45,6 +45,75 @@ const createEvent = async (req, res) => {
   }
 };
 
+// const updateEvent = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const currentUser = req.user;
+//     const newChanges = req.body?.updates;
+//     const operation = req.body?.operation;
+
+//     const event = await eventSchema.findById(id);
+//     let updatedEvent = {};
+//     if (!event) {
+//       return res.status(404).json({ msg: "Event not found!" });
+//     }
+
+//     if (
+//       !(
+//         event.createdBy.userId != currentUser.userId ||
+//         event?.staff.find(
+//           (user) =>
+//             user._id == currentUser.userId && user.role == "Administração"
+//         ) == undefined
+//       )
+//     ) {
+//       return res.status(401).json({ msg: "Wrong User!" });
+//     }
+
+//     // if (operation?.type === "eventAttendees" && operation?.task === "checkIn") {
+//     //   await checkInAttendee(event, newChanges);
+//     // } else
+//     if (operation?.type === "eventStatus") {
+//       let updatedStaff = event.staff.slice(); // Copy the array
+//       switch (operation.task) {
+//         case "addStaff":
+//           updatedStaff.push(newChanges?.newStaff);
+//           break;
+//         case "removeStaff":
+//           updatedStaff = updatedStaff.filter(
+//             (staff) => staff.uuid !== newChanges?.oldStaff?.uuid
+//           );
+//           break;
+//         case "updateStaff":
+//           updatedStaff = updatedStaff.map((staff) => {
+//             if (staff.uuid === newChanges?.uuid) {
+//               return { ...staff, role: newChanges?.role };
+//             }
+//             return staff;
+//           });
+//           break;
+//         default:
+//           break;
+//       }
+//       updatedEvent = await event.updateOne({ staff: updatedStaff });
+//     }
+//     if (operation?.type == "ticketStatus" && operation?.task == "halt") {
+//       updatedEvent = await eventSchema.findByIdAndUpdate(
+//         id,
+//         {
+//           haltedSales: !event.haltedSales,
+//         },
+//         { new: true }
+//       );
+//     }
+//     console.log(updatedEvent);
+//     return res.status(200).json(updatedEvent);
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({ msg: "Internal Server Error" });
+//   }
+// };
+
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -53,26 +122,22 @@ const updateEvent = async (req, res) => {
     const operation = req.body?.operation;
 
     const event = await eventSchema.findById(id);
-    let updatedEvent = {};
     if (!event) {
       return res.status(404).json({ msg: "Event not found!" });
     }
 
     if (
       !(
-        event.createdBy.userId != currentUser.userId ||
-        event?.staff.find(
-          (user) =>
-            user._id == currentUser.userId && user.role == "Administração"
-        ) == undefined
+        event.createdBy.userId === currentUser.userId ||
+        event.staff.some(
+          (user) => user._id === currentUser.userId && user.role === "Administração"
+        )
       )
     ) {
       return res.status(401).json({ msg: "Wrong User!" });
     }
 
-    // if (operation?.type === "eventAttendees" && operation?.task === "checkIn") {
-    //   await checkInAttendee(event, newChanges);
-    // } else
+    let updatedEvent;
     if (operation?.type === "eventStatus") {
       let updatedStaff = event.staff.slice(); // Copy the array
       switch (operation.task) {
@@ -95,14 +160,24 @@ const updateEvent = async (req, res) => {
         default:
           break;
       }
-      updatedEvent = await event.updateOne({ staff: updatedStaff });
-    }
-    if (operation?.type == "ticketStatus" && operation?.task == "halt") {
-      updatedEvent = await eventSchema.findByIdAndUpdate(id, {
-        haltedSales: !event.haltedSales,
-      });
+      updatedEvent = await eventSchema.findByIdAndUpdate(
+        id,
+        { staff: updatedStaff },
+        { new: true }
+      );
+    } else if (operation?.type === "ticketStatus" && operation?.task === "halt") {
+      updatedEvent = await eventSchema.findByIdAndUpdate(
+        id,
+        { haltedSales: !event.haltedSales },
+        { new: true }
+      );
     }
 
+    if (!updatedEvent) {
+      return res.status(400).json({ msg: "Update operation failed" });
+    }
+
+    console.log(updatedEvent);
     return res.status(200).json(updatedEvent);
   } catch (error) {
     console.log(error);

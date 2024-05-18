@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
-const sendEmail = require("./controllers/sendEmail");
+
+// const sendEmail = require("./controllers/sendEmail");
 require("express-async-errors");
 
 require("dotenv").config();

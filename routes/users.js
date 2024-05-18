@@ -1,9 +1,12 @@
 const express=require("express")
-const {users}=require("../controllers/users")
+const {users,searchUsers}=require("../controllers/users")
 
 const usersRouter =express.Router()
 
 usersRouter.route("/").get(users)
+
+usersRouter.route("/search").get(searchUsers)
+
 
 
 

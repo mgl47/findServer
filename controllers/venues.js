@@ -7,7 +7,6 @@ const nearbyVenues = async (req, res) => {
 
     let queryFilter = {};
 
-
     if (long && lat) {
       queryFilter.location = {
         $near: {
@@ -19,7 +18,7 @@ const nearbyVenues = async (req, res) => {
         },
       };
     }
-    if (all=="true") {
+    if (all == "true") {
       console.log("jkhjghfx");
       queryFilter.activeEvents = { $gte: 1 };
     }
@@ -56,4 +55,41 @@ const venues = async (req, res) => {
   }
 };
 
-module.exports = { venues, nearbyVenues };
+const searchVenues = async (req, res) => {
+  const { search } = req.query;
+
+  let aggregateStages = [
+    {
+      $search: {
+        index: "venueSearch",
+        text: {
+          query: search,
+          path: ["address.city", "address.zone", "displayName", "username"],
+          // path: "title",
+        },
+      },
+    },
+    {
+      $limit: 5,
+    },
+
+    {
+      $project: {
+        followers: 0,
+        updatedAt: 0,
+        createdBy: 0,
+      },
+    },
+  ];
+  try {
+    const venues = await venuesSchema.aggregate(aggregateStages);
+
+
+    return res.status(200).json(venues);
+  } catch (error) {
+    console.log("Error retrieving events:", error);
+    return res.status(500).json({ msg: "Error retrieving events" });
+  }
+};
+
+module.exports = { venues, nearbyVenues, searchVenues };

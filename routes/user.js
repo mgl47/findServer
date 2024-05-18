@@ -12,15 +12,14 @@ const {
 const { getInfo, updateUser, deleteAccount ,registerArtist} = require("../controllers/user");
 
 //get,update,delete current user
+userRouter.route("/current/").get(getInfo).post(registerArtist);
 userRouter
   .route("/current/:id")
-  .get(getInfo)
   .patch(updateUser)
   .delete(deleteAccount);
 
 
-userRouter
-  .route("/current/").post(registerArtist)
+
 //create, edit, delete event by a user
 
 userRouter.route("/event/one").get(getOneEvent);

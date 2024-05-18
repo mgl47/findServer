@@ -74,7 +74,10 @@ const buyTickets = async (req, res, next) => {
     };
     await event.updateOne({ $set: updateQuery }, { new: true });
 
-    await userSchema.findByIdAndUpdate(currentUser?.userId, userUpdates);
+    await userSchema.findByIdAndUpdate(currentUser?.userId, {
+      userUpdates,
+      $inc: { "balance.amount": -details.total },
+    });
     return res.status(200).json(newPurchase);
   } catch (error) {
     console.log(error);
