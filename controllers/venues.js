@@ -19,7 +19,6 @@ const nearbyVenues = async (req, res) => {
       };
     }
     if (all == "true") {
-      console.log("jkhjghfx");
       queryFilter.activeEvents = { $gte: 1 };
     }
     venues = await venuesSchema.find(queryFilter);
@@ -30,7 +29,7 @@ const nearbyVenues = async (req, res) => {
   }
 };
 const venues = async (req, res) => {
-  const { filter, island } = req.query;
+  const { filter } = req.query;
   const queryFilter = {};
 
   if (filter) {
@@ -38,15 +37,7 @@ const venues = async (req, res) => {
   }
 
   try {
-    let venues;
-    // if (island) {
-    //   venues = await venuesSchema.find({
-    //     $and: [queryFilter, island && { "address.island.code": island }],
-    //   });
-    // } else {
-    venues = await venuesSchema.find(queryFilter);
-    // }
-    // console.log(venues);
+    const venues = await venuesSchema.find(queryFilter);
 
     return res.status(200).json(venues);
   } catch (error) {
@@ -65,7 +56,6 @@ const searchVenues = async (req, res) => {
         text: {
           query: search,
           path: ["address.city", "address.zone", "displayName", "username"],
-          // path: "title",
         },
       },
     },
@@ -83,7 +73,6 @@ const searchVenues = async (req, res) => {
   ];
   try {
     const venues = await venuesSchema.aggregate(aggregateStages);
-
 
     return res.status(200).json(venues);
   } catch (error) {

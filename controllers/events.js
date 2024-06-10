@@ -1,7 +1,7 @@
 const eventSchema = require("../models/event");
 
 const events = async (req, res) => {
-  const { venue, artist, date, category } = req.query;
+  const { venue, username, artist, date, category } = req.query;
 
 
   let queryFilter = {};
@@ -12,14 +12,18 @@ const events = async (req, res) => {
   if (category) {
     queryFilter.category = category;
   }
-
-  if (artist) {
+  if (username) {
     queryFilter = {
       $or: [
-        { "artists.uuid": artist },
-        { "createdBy.uuid": artist },
-        { "organizers.uuid": artist },
+        { "artists.username": username },
+        { "createdBy.username": username },
+        { "organizers.username": username },
       ],
+    };
+  }
+  if (artist) {
+    queryFilter = {
+      $or: [{ "createdBy.uuid": artist }, { "organizers.uuid": artist }],
     };
   }
 
@@ -28,7 +32,16 @@ const events = async (req, res) => {
   }
 
   try {
-    const events = await eventSchema.find(queryFilter).sort({ createdAt: -1 });
+    const events = await eventSchema
+      .find(queryFilter)
+      .select([
+        "-attendees",
+        "-staff",
+        "-goingUsers",
+        "-interestedUsers",
+        "-store",
+      ])
+      .sort({ createdAt: -1 });
     return res.status(200).json(events);
   } catch (error) {
     console.log("Error retrieving events:", error);
@@ -65,6 +78,7 @@ const searchEvents = async (req, res) => {
         goingUsers: 0,
         attendees: 0,
         staff: 0,
+        store: 0,
       },
     },
   ];

@@ -4,38 +4,168 @@ const userSchema = require("../models/user");
 
 // type: "ticketPurchase",
 // task: "purchase",
+// const buyTickets = async (req, res, next) => {
+//   const { id } = req.params;
+//   const currentUser = req.user;
+//   const { details, userUpdates, operation } = req.body;
+//   const addedCoupon = details?.transaction?.coupon;
+//   const invalidTickets = [];
+
+//   const endUSer =
+//     operation?.task == "gift" || operation?.task == "doorPurchase"
+//       ? details?.user?.endUser
+//       : currentUser;
+
+//   try {
+//     const event = await eventSchema.findById(details?.event?._id);
+//     let updateQuery = {};
+//     let updateInterested = [...event.interestedUsers];
+//     let updateGoingUsers = [...event.goingUsers];
+
+//     if (!details?.tickets || !event?.tickets) {
+//       return;
+//     }
+
+//     let updatedEventTickets = [...event?.tickets];
+
+//     // let updatedEventTickets = null;
+//     let matchedCoupon = null;
+//     if (addedCoupon) {
+//       updatedEventTickets?.forEach((ticket) => {
+//         if (
+//           ticket?.coupon?.quantity > 0 &&
+//           ticket?.coupon?.label == addedCoupon?.label
+//         ) {
+//           console.log("Matched coupon", ticket.coupon);
+
+//           matchedCoupon = ticket.coupon;
+//         }
+//       });
+
+//       if (matchedCoupon) {
+//         const couponIndex = updatedEventTickets.findIndex(
+//           (ticket) => ticket.coupon?.label === matchedCoupon?.label
+//         );
+//         if (couponIndex !== -1) {
+//           updatedEventTickets[couponIndex].coupon.quantity -= 1;
+//         }
+//       } else {
+//         return res.status(404).json({ msg: "Cupom inválido" });
+//       }
+//     }
+
+//     details.tickets.forEach((purchasedTicket) => {
+//       const eventTicketIndex = updatedEventTickets.findIndex(
+//         (eventTicket) => eventTicket.id === purchasedTicket.id
+//       );
+
+//       if (eventTicketIndex !== -1) {
+//         updatedEventTickets[eventTicketIndex].available -= 1; // Deduct one ticket from available quantity
+//         if (updatedEventTickets[eventTicketIndex].available < 0) {
+//           invalidTickets.push(purchasedTicket?.category); // Collect invalid tickets
+//         }
+//       } else {
+//         console.warn(`Event ticket with UUID ${purchasedTicket.id} not found.`);
+//       }
+//     });
+
+//     if (invalidTickets.length > 0) {
+//       return res.status(401).json({
+//         msg: `A quantidade selecionada para o bilhete "${invalidTickets?.[0]}" ultrapassa a quantidade disponível. Tente novamente!`,
+//         restart: true,
+//       });
+//     }
+
+//     const newPurchase = await purchaseSchema.create(details);
+
+//     if (event.interestedUsers?.includes(endUSer.userId)) {
+//       const index = updateInterested.indexOf(endUSer.userId);
+//       if (index !== -1) {
+//         updateInterested.splice(index, 1); // Remove user from interested list
+//       }
+//     }
+
+//     const index = updateGoingUsers.indexOf(endUSer.userId);
+//     if (index == -1) {
+//       updateGoingUsers.push(endUSer.userId); // add user to going list
+//     }
+//     const eventTicket = req.body?.details;
+//     let newAttendees = event?.attendees;
+//     newAttendees.push(...eventTicket?.tickets);
+
+//     updateQuery = {
+//       goingUsers: updateGoingUsers,
+//       interestedUsers: updateInterested,
+//       attendees: newAttendees,
+//       tickets: updatedEventTickets,
+//     };
+//     await event.updateOne({ $set: updateQuery }, { new: true });
+
+//     await userSchema.findByIdAndUpdate(currentUser?.userId, {
+//       userUpdates,
+//       $inc: {
+//         "balance.amount": addedCoupon
+//           ? -(details.total - addedCoupon?.value)
+//           : -details.total,
+//       },
+//     });
+//     return res.status(200).json(newPurchase);
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(401).json({ msg: "Error retrieving token" });
+//   }
+// };
+
 const buyTickets = async (req, res, next) => {
   const { id } = req.params;
   const currentUser = req.user;
   const { details, userUpdates, operation } = req.body;
+  const addedCoupon = details?.transaction?.coupon;
   const invalidTickets = [];
 
-  const endUSer =
-    operation?.task == "gift" || operation?.task == "doorPurchase"
+  const endUser =
+    operation?.task === "gift" || operation?.task === "doorPurchase"
       ? details?.user?.endUser
       : currentUser;
 
   try {
     const event = await eventSchema.findById(details?.event?._id);
-    let updateQuery = {};
-    let updateInterested = [...event.interestedUsers];
-    let updateGoingUsers = [...event.goingUsers];
-
     if (!details?.tickets || !event?.tickets) {
-      return;
+      return res
+        .status(400)
+        .json({ msg: "Evento ou Bilhetes não encontrados!", restart: true });
     }
 
-    let updatedEventTickets = [...event?.tickets];
+    let updatedEventTickets = [...event.tickets];
+    let matchedCoupon = null;
 
-    details.tickets.forEach((purchasedTicket) => {
-      const eventTicketIndex = updatedEventTickets.findIndex(
-        (eventTicket) => eventTicket.id === purchasedTicket.id
+    // Handle coupon
+    if (addedCoupon) {
+      matchedCoupon = updatedEventTickets.find(
+        (ticket) =>
+          ticket?.coupon?.quantity > 0 &&
+          ticket?.coupon?.label === addedCoupon?.label
       );
 
-      if (eventTicketIndex !== -1) {
-        updatedEventTickets[eventTicketIndex].available -= 1; // Deduct one ticket from available quantity
-        if (updatedEventTickets[eventTicketIndex].available < 0) {
-          invalidTickets.push(purchasedTicket?.category); // Collect invalid tickets
+      if (matchedCoupon) {
+        matchedCoupon.coupon.quantity -= 1;
+      } else {
+        return res
+          .status(401)
+          .json({ msg: "Coupon Inválido ou indisponível!" });
+      }
+    }
+
+    // Process ticket purchases
+    details.tickets.forEach((purchasedTicket) => {
+      const eventTicket = updatedEventTickets.find(
+        (ticket) => ticket.id === purchasedTicket.id
+      );
+
+      if (eventTicket) {
+        eventTicket.available -= 1;
+        if (eventTicket.available < 0) {
+          invalidTickets.push(purchasedTicket?.category);
         }
       } else {
         console.warn(`Event ticket with UUID ${purchasedTicket.id} not found.`);
@@ -44,46 +174,53 @@ const buyTickets = async (req, res, next) => {
 
     if (invalidTickets.length > 0) {
       return res.status(401).json({
-        msg: `A quantidade selecionada para o bilhete "${invalidTickets?.[0]}" ultrapassa a quantidade disponível. Tente novamente!`,
+        msg: `The selected quantity for the ticket "${invalidTickets?.[0]}" exceeds the available quantity. Please try again!`,
         restart: true,
       });
     }
 
     const newPurchase = await purchaseSchema.create(details);
 
-    if (event.interestedUsers?.includes(endUSer.userId)) {
-      const index = updateInterested.indexOf(endUSer.userId);
-      if (index !== -1) {
-        updateInterested.splice(index, 1); // Remove user from interested list
-      }
+    // Update interested and going users
+    const updateInterested = [...event.interestedUsers];
+    const updateGoingUsers = [...event.goingUsers];
+
+    if (updateInterested.includes(endUser.userId)) {
+      updateInterested.splice(updateInterested.indexOf(endUser.userId), 1);
     }
 
-    const index = updateGoingUsers.indexOf(endUSer.userId);
-    if (index == -1) {
-      updateGoingUsers.push(endUSer.userId); // add user to going list
+    if (!updateGoingUsers.includes(endUser.userId)) {
+      updateGoingUsers.push(endUser.userId);
     }
-    const eventTicket = req.body?.details;
-    let newAttendees = event?.attendees;
-    newAttendees.push(...eventTicket?.tickets);
 
-    updateQuery = {
+    const newAttendees = [...event.attendees, ...details.tickets];
+
+    const updateQuery = {
       goingUsers: updateGoingUsers,
       interestedUsers: updateInterested,
       attendees: newAttendees,
       tickets: updatedEventTickets,
     };
+
     await event.updateOne({ $set: updateQuery }, { new: true });
 
     await userSchema.findByIdAndUpdate(currentUser?.userId, {
       userUpdates,
-      $inc: { "balance.amount": -details.total },
+      $inc: {
+        "balance.amount": -details.total,
+        // "balance.amount": addedCoupon
+        //   ? -(details.total - addedCoupon?.value)
+        //   : -details.total,
+      },
     });
+
     return res.status(200).json(newPurchase);
   } catch (error) {
-    console.log(error);
-    return res.status(401).json({ msg: "Error retrieving token" });
+    console.error(error);
+    return res.status(500).json({ msg: "Error processing purchase" });
   }
 };
+
 const checkInAttendee = async (req, res) => {
   try {
     const { id } = req.params;
@@ -221,5 +358,25 @@ const checkInAttendee = async (req, res) => {
     return res.status(500).json({ msg: "Erro ao processar a solicitação" });
   }
 };
+const checkCoupon = async (req, res) => {
+  const { couponCode, eventId } = req.query;
+  let foundCoupon = null;
+  const event = await eventSchema.findById(eventId);
+  const coupon = event?.tickets?.forEach((ticket) => {
+    if (ticket?.coupon?.label == couponCode && ticket?.coupon?.quantity > 0) {
+      foundCoupon = ticket;
+    }
+  });
+  if (!foundCoupon) {
+    return res.status(404).json({ msg: "Cupom inválido" });
+  }
+  if (foundCoupon) {
+    return res.status(200).json(foundCoupon);
+  }
 
-module.exports = { buyTickets, checkInAttendee };
+  // else if (coupon?.used) {
+  return res.status(409).json({ msg: "Cupom já utilizado" });
+  // }
+};
+
+module.exports = { buyTickets, checkInAttendee, checkCoupon };
