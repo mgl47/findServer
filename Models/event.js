@@ -51,7 +51,7 @@ const eventSchema = new mongoose.Schema(
     staff: {
       type: Array,
     },
-    staffIds: {
+    lottery: {
       type: Array,
     },
     venue: {

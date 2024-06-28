@@ -185,8 +185,38 @@ const updateEvent = async (req, res) => {
       });
 
       updatedEvent = await event.save();
-    }
+    } else if (
+      operation?.type === "attendeeLottery" &&
+      operation?.task === "add"
+    ) {
+      const updatedAttendee = event?.attendees?.map((attendee) => {
+        if (attendee?.uuid == newChanges?.lotteryAttendee?.uuid) {
+          return { ...attendee, lottery: newChanges?.lotteryAttendee?.lottery };
+        } else {
+          return attendee;
+        }
+      });
 
+      updatedEvent = await eventSchema.findByIdAndUpdate(
+        id,
+        { attendees: updatedAttendee },
+        { new: true }
+      );
+      const user = await userSchema.findOne({
+        username: newChanges?.lotteryAttendee?.username,
+      });
+      let newNotis = user.notifications || [];
+      newNotis.push({
+        type: "lottery",
+        title: `Você foi sorteado para o evento ${event.title}`,
+        message: `Parabéns ${user?.displayName},você foi sorteado para o evento ${event.title}`,
+      });
+      await userSchema.findOneAndUpdate(
+        { username: newChanges?.lotteryAttendee?.username },
+        { notifications: newNotis },
+        { new: true }
+      );
+    }
     if (!updatedEvent) {
       return res.status(400).json({ msg: "Update operation failed" });
     }
@@ -197,7 +227,6 @@ const updateEvent = async (req, res) => {
     return res.status(500).json({ msg: "Internal Server Error" });
   }
 };
-
 
 const getMyEvents = async (req, res) => {
   const { userId } = req.user;

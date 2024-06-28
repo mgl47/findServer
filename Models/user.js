@@ -55,10 +55,13 @@ const userSchema = new mongoose.Schema(
     followedArtists: {
       type: Array,
     },
-  followedVenues: {
+    followedVenues: {
       type: Array,
     },
-    
+    notifications: {
+      type: Array,
+    },
+
     // purchasedTickets: {
     //   type: Array,
     //   default: [],
