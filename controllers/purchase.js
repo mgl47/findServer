@@ -114,23 +114,46 @@ const checkInAttendee = async (req, res) => {
     const { uuid, exiting, checkedAt, exitingTime, currentDate } = req.body;
 
     // Convert current date string to a Date object
-    // const currentDate2 = new Date(currentDate);
+    {
+      /*
+ day1 
+  const currentDate2 =  new Date("2024-06-09T20:00:00.000Z");
+ day2 
+  const currentDate2 = new Date("2024-06-10T23:00:00.000Z");  
+ day3 
+  const currentDate2 = new Date("2024-06-11T09:00:00.000Z");
+
+
+*/
+    }
+
     const currentDate2 = new Date("2024-06-11T09:00:00.000Z");
+
+    // const currentDate2 = new Date(currentDate);
     const now = new Date();
-    console.log(exiting);
 
     // Find the attendee based on event ID and ticket UUID
     const attendee = await purchaseSchema.findOne({
       "event._id": id,
       "tickets.uuid": uuid,
     });
+    const pastEvenent =
+      new Date(
+        attendee?.event?.dates?.[attendee?.event?.dates?.length - 1]?.endDate
+      ) < currentDate2;
+
+    console.log(pastEvenent);
 
     // If attendee is not found, return a 404 response
-    if (!attendee) {
-      return res.status(404).json({
+    if (!attendee||pastEvenent) {
+      return res.status(200).json({
         msg: "Este bilhete é inválido ou não pertence a este evento!",
+        state: "invalidTicket",
       });
     }
+
+    // Constants for timeframe calculations
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
 
     // Initialize variables to track the user's state and actions
     let isWithinTimeframe = false;
@@ -140,22 +163,22 @@ const checkInAttendee = async (req, res) => {
     let userLeftAndReturned = false;
     let userExiting = false;
     let userCheckingIn = false;
+    let ticketValidated = false;
+    let ticketAlreadyValidated = false;
     let scannedDate = {};
+    let scannedTicket = {};
 
     // Update the attendee's tickets based on the current date and action
-    const updatedAttendees = attendee?.tickets?.map((ticket) => {
+    const updatedTickets = attendee?.tickets?.map((ticket) => {
       if (ticket?.uuid === uuid) {
+        scannedTicket = { ...ticket };
         const updatedDates = ticket.dates.map((date) => {
           const startDate = new Date(date.startDate);
           const endDate = new Date(date.endDate);
 
           // Calculate the valid timeframe (2 hours before start and 2 hours after end)
-          const twoHoursBeforeStart = new Date(
-            startDate.getTime() - 2 * 60 * 60 * 1000
-          );
-          const twoHoursAfterEnd = new Date(
-            endDate.getTime() + 2 * 60 * 60 * 1000
-          );
+          const twoHoursBeforeStart = new Date(startDate.getTime() - TWO_HOURS);
+          const twoHoursAfterEnd = new Date(endDate.getTime() + TWO_HOURS);
 
           // Check if the current date is within the valid timeframe
           if (
@@ -167,45 +190,40 @@ const checkInAttendee = async (req, res) => {
 
             // Handle different actions based on the current state and the "exiting" flag
 
-            // If the user is exiting and they have already left before
-            if (exiting && date?.leftAt != null) {
-              userAlreadyLeft = true;
-            } 
-            // If the user is exiting and they are currently checked in
-            else if (exiting && date?.checkedIn) {
-              userExiting = true;
-              updatedDate.leftAt = exitingTime;
-              updatedDate.exitTime = now;
-              scannedDate = { ...updatedDate };
-            } 
-            // If the user is exiting and they have not checked in yet
-            else if (exiting && !date?.checkedIn) {
-              userLeavingWithoutCheckIn = true;
-            }
+            if (exiting) {
+              if (date.leftAt != null) {
+                // If the user is exiting and they have already left before
+                userAlreadyLeft = true;
+              } else if (date.checkedIn) {
+                // If the user is exiting and they are currently checked in
+                userExiting = true;
+                updatedDate.leftAt = exitingTime; // Record the exit time
+                updatedDate.exitTime = now; // Record the current time as exit time
+              } else if (!date.checkedIn) {
+                // If the user is exiting and they have not checked in yet
+                userLeavingWithoutCheckIn = true; // User attempting to leave without checking in
+              }
+            } else {
+              if (date.leftAt != null) {
+                // If the user is not exiting and they have left before, meaning they are returning
+                userLeftAndReturned = true;
+                updatedDate.lastLeftAt = updatedDate.leftAt; // Record the last left time
+                updatedDate.lastTime = updatedDate.exitTime; // Record the last exit time
+                updatedDate.leftAt = null; // Reset the leftAt time
+                updatedDate.exitTime = null; // Reset the exit time
+              } else if (date.checkedIn) {
+                // If the user is not exiting and they are already checked in
+                userAlreadyCheckedIn = true;
+              } else if (!date.checkedIn) {
+                // If the user is not exiting and they are not checked in yet
+                userCheckingIn = true;
+                updatedDate.checkedIn = true; // Mark as checked in
+                updatedDate.arrivalTime = now;
 
-            // If the user is not exiting and they have left before, meaning they are returning
-            if (!exiting && date?.leftAt != null) {
-              userLeftAndReturned = true;
-              updatedDate.lastLeftAt = updatedDate?.leftAt;
-              updatedDate.lastTime = updatedDate?.exitTime;
-              updatedDate.leftAt = null;
-              updatedDate.exitTime = null;
-              scannedDate = { ...updatedDate };
+                // Record the current time as arrival time
+              }
             }
-
-            // If the user is not exiting and they are already checked in
-            if (!exiting && date?.checkedIn) {
-              userAlreadyCheckedIn = true;
-            }
-
-            // If the user is not exiting and they are not checked in yet
-            if (!exiting && !date?.checkedIn) {
-              userCheckingIn = true;
-              updatedDate.checkedIn = true;
-              updatedDate.arrivalTime = now;
-              scannedDate = { ...updatedDate };
-            }
-
+            scannedDate = { ...updatedDate }; // Update the scanned date with the current state
             return updatedDate;
           }
 
@@ -223,180 +241,70 @@ const checkInAttendee = async (req, res) => {
 
     // If the current date is not within the valid timeframe, return a 400 response
     if (!isWithinTimeframe) {
-      return res
-        .status(400)
-        .json({ msg: "Not within the valid timeframe for any event date" });
+      const hasValidated = attendee?.tickets?.some((ticket) => {
+        if (ticket.uuid === uuid) {
+          return ticket.validated;
+        }
+      });
+      if (!hasValidated) {
+        await purchaseSchema.findOneAndUpdate(
+          { "tickets.uuid": uuid },
+          {
+            $set: {
+              "tickets.$.validated": true,
+              "tickets.$.validatedOn": currentDate2,
+            },
+          }
+        );
+        console.log("Bilhete validado com sucesso!");
+        ticketValidated = true;
+        return res.status(200).json({
+          scannedDate,
+          scannedTicket: {
+            ...scannedTicket,
+            validated: true,
+            validatedOn: currentDate2,
+          },
+          state: "ticketValidated",
+        });
+      }
+      console.log("Este Bilhete já foi validado!");
+      ticketAlreadyValidated = true;
+      return res.status(200).json({
+        state: "ticketAlreadyValidated",
+        scannedDate,
+        scannedTicket,
+      });
     }
 
     // Update the attendee's tickets in the database
     await purchaseSchema.findOneAndUpdate(
       { "tickets.uuid": uuid },
-      { $set: { tickets: updatedAttendees } }
+      { $set: { tickets: updatedTickets } }
     );
 
     // Log the state variables for debugging purposes
-    console.log(
-      "userAlreadyCheckedIn: ",
-      userAlreadyCheckedIn,
-      "userExiting: ",
-      userExiting,
-      "userAlreadyLeft: ",
-      userAlreadyLeft,
-      "userLeavingWithoutCheckIn: ",
-      userLeavingWithoutCheckIn,
-      "userLeftAndReturned: ",
-      userLeftAndReturned,
-      "userCheckingIn: ",
-      userCheckingIn
-    );
 
-    // Return an appropriate status code based on the user's actions
-    return res
-      .status(
-        userAlreadyLeft ? 203 : exiting ? 202 :userLeftAndReturned?204: userAlreadyCheckedIn ? 201 : 200
-      )
-      .json(scannedDate);
+    let state = "unknown";
+    if (userAlreadyLeft) state = "userAlreadyLeft";
+    else if (userExiting) state = "userExiting";
+    else if (userLeavingWithoutCheckIn) state = "userLeavingWithoutCheckIn";
+    else if (userLeftAndReturned) state = "userLeftAndReturned";
+    else if (userAlreadyCheckedIn) state = "userAlreadyCheckedIn";
+    else if (userCheckingIn) state = "userCheckingIn";
+    else if (ticketAlreadyValidated) state = "ticketAlreadyValidated";
+    else if (ticketValidated) state = "ticketValidated";
+
+    return res.status(200).json({
+      state,
+      scannedDate,
+      scannedTicket,
+    });
   } catch (error) {
     console.error("Error checking in attendee:", error);
     return res.status(500).json({ msg: "Erro ao processar a solicitação" });
   }
 };
-
-
-
-
-
-// const checkInAttendee = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { uuid, exiting, checkedAt, exitingTime, currentDate } = req.body;
-//     // const currentDate2 = new Date(currentDate);
-//     const currentDate2 = new Date("2024-06-09T21:10:35.205Z");
-//     const now = new Date();
-
-//     const attendee = await purchaseSchema.findOne({
-//       "event._id": id,
-//       "tickets.uuid": uuid,
-//     });
-
-//     if (!attendee) {
-//       return res.status(404).json({
-//         msg: "Este bilhete é inválido ou não pertence a este evento!",
-//       });
-//     }
-
-//     let isWithinTimeframe = false;
-//     let userAlreadyLeft = false;
-//     let userAlreadyCheckedIn = false;
-//     let userLeavingWithoutCheckIn = false;
-//     let userLeftAndReturned = false;
-//     let userExiting = false;
-//     let userCheckingIn = false;
-//     let scannedDate = {};
-
-//     const updatedAttendees = attendee?.tickets?.map((ticket) => {
-//       if (ticket?.uuid === uuid) {
-//         const updatedDates = ticket.dates.map((date) => {
-//           const startDate = new Date(date.startDate);
-//           const endDate = new Date(date.endDate);
-
-//           const twoHoursBeforeStart = new Date(
-//             startDate.getTime() - 2 * 60 * 60 * 1000
-//           );
-//           const twoHoursAfterEnd = new Date(
-//             endDate.getTime() + 2 * 60 * 60 * 1000
-//           );
-
-//           if (
-//             currentDate2 >= twoHoursBeforeStart &&
-//             currentDate2 <= twoHoursAfterEnd
-//           ) {
-
-//             const updatedDate = { ...date };
-//             isWithinTimeframe = true;
-
-//             if (exiting && date?.leftAt != null) {
-//               userAlreadyLeft = true;
-//             } else if (exiting && date?.checkedIn) {
-//               userExiting = true;
-//               updatedDate.leftAt = exitingTime;
-//               updatedDate.exitTime = now;
-//               scannedDate = { ...updatedDate };
-//             } else if (exiting && !date?.checkedIn) {
-//               userLeavingWithoutCheckIn = true;
-//             }
-
-//             if (!exiting && date?.leftAt != null) {
-//               userLeftAndReturned = true;
-//               updatedDate.lastLeftAt = updatedDate?.leftAt;
-//               updatedDate.lastTime = updatedDate?.exitTime;
-//               updatedDate.leftAt = null;
-//               updatedDate.exitTime = null;
-//               scannedDate = { ...updatedDate };
-//             }
-
-//             if (!exiting && date?.checkedIn) {
-//               userAlreadyCheckedIn = true;
-//             }
-
-//             if (!exiting && !date?.checkedIn) {
-//               userCheckingIn = true;
-//               updatedDate.checkedIn = true;
-//               updatedDate.arrivalTime = now;
-//               scannedDate = { ...updatedDate };
-//             }
-
-//             return updatedDate;
-//           }
-
-//           return date;
-//         });
-
-//         return {
-//           ...ticket,
-//           dates: updatedDates,
-//         };
-//       }
-
-//       return ticket;
-//     });
-//     if (!isWithinTimeframe) {
-//       console.log("adfs");
-
-//       return res
-//         .status(400)
-//         .json({ msg: "Not within the valid timeframe for any event date" });
-//     }
-
-//     await purchaseSchema.findOneAndUpdate(
-//       { "tickets.uuid": uuid },
-//       { $set: { tickets: updatedAttendees } }
-//     );
-//     console.log(
-//       "userAlreadyCheckedIn: ",
-//       userAlreadyCheckedIn,
-//       "userExiting: ",
-//       userExiting,
-//       "userAlreadyLeft: ",
-//       userAlreadyLeft,
-//       "userLeavingWithoutCheckIn: ",
-//       userLeavingWithoutCheckIn,
-//       "userLeftAndReturned: ",
-//       userLeftAndReturned,
-//       "userCheckingIn: ",
-//       userCheckingIn
-//     );
-//     return res
-//       .status(
-//         userAlreadyLeft ? 203 : exiting ? 202 : userAlreadyCheckedIn ? 201 : 200
-//       )
-//       .json(scannedDate);
-//   } catch (error) {
-//     console.error("Error checking in attendee:", error);
-//     return res.status(500).json({ msg: "Erro ao processar a solicitação" });
-//   }
-// };
-
 
 const getAttendees = async (req, res) => {
   try {
@@ -527,304 +435,3 @@ module.exports = {
   handleAttendees,
   getAttendees,
 };
-
-{
-  /*
-  
-  const checkInAttendee = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { uuid, exiting, checkedAt, exitingTime, currentDate } = req.body;
-    const currentDate2 = new Date(currentDate);
-
-    const attendees = await purchaseSchema.find({ "event._id": id });
-    const separatedAttendees = attendees?.reduce((acc, purchase) => {
-      if (purchase?.tickets) {
-        acc.push(...purchase.tickets); //a Use the spread operator to flatten the array
-      }
-      return acc;
-    }, []);
-
-    const ticketUser = separatedAttendees?.find(
-      (attendee) => attendee?.uuid === uuid
-    );
-
-    if (!ticketUser) {
-      return res.status(404).json({
-        msg: "Este bilhete é inválido ou não pertence a este evento!",
-      });
-    }
-
-    // if()
-
-    const isWithinTimeframe = ticketUser?.dates?.some((date) => {
-
-
-
-      const dateObj = new Date(date.date);
-
-      const twoHoursBefore = new Date(
-        currentDate2.getTime() - 2 * 60 * 60 * 1000
-      );
-
-      const twelveHoursAfter = new Date(
-        currentDate2.getTime() + 12 * 60 * 60 * 1000
-      );
-      return dateObj > twoHoursBefore && dateObj < twelveHoursAfter;
-    });
-
-    if (!isWithinTimeframe) {
-      if (ticketUser?.validated) {
-        console.log("Bilhete já validado!");
-        return res.status(204).json({ msg: "Este bilhete já foi validado!" });
-      }
-
-      // Update attendee's status to "validated" within the purchase document
-      await purchaseSchema.findOneAndUpdate(
-        { "tickets.uuid": uuid },
-        { $set: { "tickets.$.validated": checkedAt } }
-      );
-
-      console.log("Bilhete validado com sucesso!");
-
-      // Respond with updated attendee information
-      // return res.status(204).json({ msg: "Bilhete validado com sucesso!" });
-      return res.status(205).json(ticketUser);
-    }
-
-    if (ticketUser && !exiting) {
-      // If attendee is already checked in, return it without updating
-      return res.status(201).json(ticketUser);
-    }
-
-    const purchase = await purchaseSchema.findOne({
-      purchaseId: ticketUser?.purchaseId,
-    });
-    // console.log(purchase);
-
-    // Update event attendees
-    let userHadLeft = false;
-    const updatedAttendees = separatedAttendees?.map((attendee) => {
-      if (attendee?.uuid === ticketUser?.uuid) {
-        const updatedAttendee = {
-          ...attendee,
-          checkedIn: true,
-          arrivalTime: now,
-        };
-
-        if (!exiting && attendee?.leftAt != null) {
-          userHadLeft = true;
-        }
-        if (exiting) {
-          updatedAttendee.leftAt = exitingTime;
-          updatedAttendee.exitTime = now;
-        } else {
-          updatedAttendee.lastLeftAt = updatedAttendee?.leftAt;
-          updatedAttendee.lastTime = updatedAttendee?.exitTime;
-          updatedAttendee.leftAt = null;
-          updatedAttendee.exitTime = null;
-
-          if (!updatedAttendee.lastLeftAt) {
-            updatedAttendee.checkedAt = checkedAt;
-          }
-        }
-
-        return updatedAttendee;
-      }
-      return attendee;
-    });
-
-    await event.updateOne({ attendees: updatedAttendees });
-
-    let scannedTicket = {};
-
-    const updatedTickets = purchase?.tickets?.map((ticket) => {
-      if (ticket?.uuid === ticketUser?.uuid) {
-        const updatedTicket = {
-          ...ticket,
-          checkedIn: true,
-          arrivalTime: now,
-        };
-
-        if (exiting) {
-          updatedTicket.leftAt = exitingTime;
-          updatedTicket.exitTime = now;
-        } else {
-          updatedTicket.lastLeftAt = updatedTicket?.leftAt;
-          updatedTicket.lastTime = updatedTicket?.exitTime;
-          updatedTicket.leftAt = null;
-          updatedTicket.exitTime = null;
-          if (!updatedTicket.lastLeftAt) {
-            updatedTicket.checkedAt = checkedAt;
-          }
-        }
-
-        scannedTicket = { ...updatedTicket }; // Assign scannedTicket value
-        return updatedTicket;
-      }
-      return ticket;
-    });
-
-    await purchase.updateOne({ tickets: updatedTickets });
-    return res
-      .status(userHadLeft ? 203 : exiting ? 202 : 200)
-      .json(scannedTicket);
-  } catch (error) {
-    console.error("Error checking in attendee:", error);
-    return res.status(500).json({ msg: "Erro ao processar a solicitação" });
-  }
-};
-  
-  */
-}
-
-{
-  /**
-  first
-  const checkInAttendee = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { uuid, exiting, checkedAt, exitingTime, currentDate } = req.body;
-    const event = await eventSchema.findById(id);
-
-    const ticketUser = await event?.attendees?.filter(
-      (attendee) => attendee?.uuid == uuid
-    )[0];
-
-    if (!ticketUser) {
-      return res.status(404).json({
-        msg: "Este bilhete é inválido ou não pertence a este evento!",
-      });
-    }
-
-    // const existingAttendee = event?.attendees?.find(
-    //   (attendee) =>
-    //     attendee?.uuid === ticketUser?.uuid &&
-    //     attendee?.checkedIn &&
-    //     !attendee?.leftAt
-    // );
-    const existingAttendee = event?.attendees?.find(
-      (attendee) => attendee?.uuid === ticketUser?.uuid
-    );
-
-    const isWithinTimeframe = existingAttendee?.dates?.some((date) => {
-      const dateObj = new Date(date.date);
-
-      const twoHoursBefore = new Date(
-        currentDate.getTime() - 2 * 60 * 60 * 1000
-      );
-
-      const twelveHoursAfter = new Date(
-        currentDate.getTime() + 12 * 60 * 60 * 1000
-      );
-      return dateObj > twoHoursBefore && dateObj < twelveHoursAfter;
-    });
-
-    if (!isWithinTimeframe) {
-      if (existingAttendee?.validated) {
-        console.log("Bilhete já validado!");
-        return res.status(204).json({ msg: "Este bilhete já foi validado!" });
-      }
-      // Remove ticket from purchase schema
-      await purchaseSchema.findOneAndUpdate(
-        { purchaseId: ticketUser?.purchaseId },
-        { $pull: { tickets: { uuid: ticketUser?.uuid } } },
-        { validated: checkedAt }
-      );
-
-      // Update attendee's status to "validated" within the event document
-      await eventSchema.updateOne(
-        { "attendees.uuid": ticketUser?.uuid },
-        { $set: { "attendees.$.validated": checkedAt } }
-      );
-      console.log("Bilhete validado com sucesso!");
-
-      // Respond with updated attendee information
-      // return res.status(204).json({ msg: "Bilhete validado com sucesso!" });
-      return res.status(205).json(existingAttendee);
-    }
-
-    if (existingAttendee && !exiting) {
-      // If attendee is already checked in, return it without updating
-      return res.status(201).json(existingAttendee);
-    }
-
-    const purchase = await purchaseSchema.findOne({
-      purchaseId: ticketUser?.purchaseId,
-    });
-    // console.log(purchase);
-
-    // Update event attendees
-    let userHadLeft = false;
-    const updatedAttendees = event?.attendees?.map((attendee) => {
-      if (attendee?.uuid === ticketUser?.uuid) {
-        const updatedAttendee = {
-          ...attendee,
-          checkedIn: true,
-          arrivalTime: now,
-        };
-
-        if (!exiting && attendee?.leftAt != null) {
-          userHadLeft = true;
-        }
-        if (exiting) {
-          updatedAttendee.leftAt = exitingTime;
-          updatedAttendee.exitTime = now;
-        } else {
-          updatedAttendee.lastLeftAt = updatedAttendee?.leftAt;
-          updatedAttendee.lastTime = updatedAttendee?.exitTime;
-          updatedAttendee.leftAt = null;
-          updatedAttendee.exitTime = null;
-
-          if (!updatedAttendee.lastLeftAt) {
-            updatedAttendee.checkedAt = checkedAt;
-          }
-        }
-
-        return updatedAttendee;
-      }
-      return attendee;
-    });
-
-    await event.updateOne({ attendees: updatedAttendees });
-
-    let scannedTicket = {};
-
-    const updatedTickets = purchase?.tickets?.map((ticket) => {
-      if (ticket?.uuid === ticketUser?.uuid) {
-        const updatedTicket = {
-          ...ticket,
-          checkedIn: true,
-          arrivalTime: now,
-        };
-
-        if (exiting) {
-          updatedTicket.leftAt = exitingTime;
-          updatedTicket.exitTime = now;
-        } else {
-          updatedTicket.lastLeftAt = updatedTicket?.leftAt;
-          updatedTicket.lastTime = updatedTicket?.exitTime;
-          updatedTicket.leftAt = null;
-          updatedTicket.exitTime = null;
-          if (!updatedTicket.lastLeftAt) {
-            updatedTicket.checkedAt = checkedAt;
-          }
-        }
-
-        scannedTicket = { ...updatedTicket }; // Assign scannedTicket value
-        return updatedTicket;
-      }
-      return ticket;
-    });
-
-    await purchase.updateOne({ tickets: updatedTickets });
-    return res
-      .status(userHadLeft ? 203 : exiting ? 202 : 200)
-      .json(scannedTicket);
-  } catch (error) {
-    console.error("Error checking in attendee:", error);
-    return res.status(500).json({ msg: "Erro ao processar a solicitação" });
-  }
-};
-  */
-}
