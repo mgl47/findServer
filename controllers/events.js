@@ -1,10 +1,13 @@
 const eventSchema = require("../models/event");
 
 const events = async (req, res) => {
-  const { venue, username, artist, date, category } = req.query;
-
+  const { venue, active,username, artist, date, category } = req.query;
 
   let queryFilter = {};
+
+  if (active) {
+    queryFilter["status.active"] = true;
+  }
   if (venue) {
     queryFilter["venue.uuid"] = venue;
   }
@@ -28,7 +31,7 @@ const events = async (req, res) => {
   }
 
   if (date) {
-    queryFilter["dates.calendarDate"] = date;
+    queryFilter["dates.startCalendarDate"] = date;
   }
 
   try {
@@ -48,7 +51,26 @@ const events = async (req, res) => {
     return res.status(500).json({ msg: "Error retrieving events" });
   }
 };
+const getSharedEvent = async (req, res) => {
+  const { eventId } = req.query;
 
+  try {
+    const event = await eventSchema
+      .findOne({ uuid: eventId })
+      .select([
+        "-attendees",
+        "-staff",
+        "-goingUsers",
+        "-interestedUsers",
+        "-store",
+      ]);
+
+    return res.status(200).json(event);
+  } catch (error) {
+    console.log("Error retrieving events:", error);
+    return res.status(500).json({ msg: "Error retrieving events" });
+  }
+};
 const searchEvents = async (req, res) => {
   const { search } = req.query;
 
@@ -92,4 +114,4 @@ const searchEvents = async (req, res) => {
   }
 };
 
-module.exports = { events, searchEvents };
+module.exports = { events, searchEvents,getSharedEvent };

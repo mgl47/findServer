@@ -148,18 +148,32 @@ const getMyEvents = async (req, res) => {
   }
 };
 const getOneEvent = async (req, res) => {
-  const { userId } = req.user;
+  const { userId, username } = req.user;
   const { eventId, attendees } = req.query;
-
   try {
+    let event;
+
     if (attendees) {
-      const event = await eventSchema.findById(eventId);
+      event = await eventSchema.findOne({
+        _id: eventId,
+        $or: [
+          { "createdBy.username": username },
+          { "organizers.username": username },
+        ],
+      });
+
+      if (!event) {
+        return res
+          .status(404)
+          .json({ msg: "Event not found or you do not have access" });
+      }
+
       const attendees = await purchaseSchema.find({
-        "event._id": eventId,
+        "event.eventId": eventId,
       });
       return res.status(200).json({ event, attendees });
     }
-    const event = await eventSchema.findById(eventId);
+    event = await eventSchema.findById(eventId);
 
     return res.status(200).json(event);
   } catch (error) {

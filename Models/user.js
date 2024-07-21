@@ -27,10 +27,11 @@ const userSchema = new mongoose.Schema(
       type: Object,
     },
     phone: {
-      type: Array,
+      type: Object,
     },
     balance: {
       type: Object,
+      default: { amount: 0 },
     },
     socials: {
       type: Object,

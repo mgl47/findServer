@@ -30,6 +30,7 @@ const nearbyVenues = async (req, res) => {
 };
 const venues = async (req, res) => {
   const { filter } = req.query;
+
   const queryFilter = {};
 
   if (filter) {

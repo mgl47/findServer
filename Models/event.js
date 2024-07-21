@@ -33,7 +33,7 @@ const eventSchema = new mongoose.Schema(
       type: Array,
     },
 
-    category: {
+    categories: {
       type: Array,
     },
     dates: {
@@ -50,6 +50,9 @@ const eventSchema = new mongoose.Schema(
     },
     staff: {
       type: Array,
+    },
+    status: {
+      type: Object,
     },
     lottery: {
       type: Array,

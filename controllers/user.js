@@ -5,8 +5,7 @@ const venueSchema = require("../models/venue");
 
 // Function to update user profile
 const updateUserProfile = async (userId, updates) => {
-   await userSchema.findByIdAndUpdate(userId, updates, { new: true });
-   
+  await userSchema.findByIdAndUpdate(userId, updates, { new: true });
 };
 
 // Function to toggle follow status for artists and venues
@@ -79,10 +78,16 @@ const addToEvent = async (req, res) => {
       } else {
         targetArray.push(currentUser.userId); // Add user to target array if not present
         // Ensure user is not in both lists
-        if (operation.task === "interest" && updateGoingUsers.includes(currentUser.userId)) {
+        if (
+          operation.task === "interest" &&
+          updateGoingUsers.includes(currentUser.userId)
+        ) {
           const goingIndex = updateGoingUsers.indexOf(currentUser.userId);
           updateGoingUsers.splice(goingIndex, 1);
-        } else if (operation.task === "going" && updateInterested.includes(currentUser.userId)) {
+        } else if (
+          operation.task === "going" &&
+          updateInterested.includes(currentUser.userId)
+        ) {
           const interestIndex = updateInterested.indexOf(currentUser.userId);
           updateInterested.splice(interestIndex, 1);
         }
@@ -94,7 +99,7 @@ const addToEvent = async (req, res) => {
     }
 
     await selectedEvent.updateOne({ $set: updateQuery }, { new: true }); // Update event with new lists
-    // return res.status(200).json({ msg: "Event updated" }); 
+    // return res.status(200).json({ msg: "Event updated" });
   } catch (error) {
     console.error("Error updating event:", error);
     return res.status(500).json({ msg: "Error updating event" });
@@ -102,13 +107,70 @@ const addToEvent = async (req, res) => {
 };
 
 // Controller function to handle user updates
+// const updateUser = async (req, res) => {
+//   const { id } = req.params; // User ID
+//   const { operation, amount, updates } = req.body; // Operation details
+//   const currentUser = req.user; // Current user details
+
+//   try {
+//     const user = await userSchema.findById(id); // Find user by ID
+//     if (!user) {
+//       return res.status(404).json({ msg: "User not found" });
+//     }
+
+//     if (user._id.toString() !== currentUser.userId) {
+//       return res.status(401).json({ msg: "Unauthorized: Wrong User" });
+//     }
+
+//     // Handle different operation types
+//     switch (operation?.type) {
+//       case "profileChange":
+//         if (operation?.task === "editing") {
+//           await updateUserProfile(id, updates);
+//           return res.status(200).json({ msg: "User profile updated" });
+//         }
+//         break;
+//       case "follow":
+//         if (operation?.task === "artist" || operation?.task === "venue") {
+//           await toggleFollow(req, res);
+//           return; // Ensure no further response is sent
+//         }
+//         break;
+//       case "accountBalance":
+//         await updateUserBalance(id, operation, amount);
+//         return res.status(200).json({ msg: "User balance updated" });
+//       case "eventStatus":
+//         await addToEvent(req, res);
+//         await updateUserProfile(id, updates);
+//         return res.status(200).json({ msg: "User updated" });
+//       case "notification":
+//         await updateUserProfile(id, updates);
+//         return res.status(200).json({ msg: "Notifications updated" });
+//       default:
+//         return res.status(400).json({ msg: "Invalid operation type" });
+//     }
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     return res.status(500).json({ msg: "Internal server error" });
+//   }
+// };
 const updateUser = async (req, res) => {
   const { id } = req.params; // User ID
   const { operation, amount, updates } = req.body; // Operation details
   const currentUser = req.user; // Current user details
 
   try {
-    const user = await userSchema.findById(id); // Find user by ID
+    const user = await userSchema
+      .findById(id)
+      .select(
+       [ "-goingToEvents",
+        "-likedEvents",
+        "-password",
+        "-balance",
+        "-followedVenues",
+        "-followedArtists",
+        "-updatedAt"]
+      ); // Find user by ID
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
@@ -117,11 +179,11 @@ const updateUser = async (req, res) => {
       return res.status(401).json({ msg: "Unauthorized: Wrong User" });
     }
 
-    // Handle different operation types
     switch (operation?.type) {
       case "profileChange":
         if (operation?.task === "editing") {
-          await updateUserProfile(id, updates);
+          await userSchema.findByIdAndUpdate(id, updates);
+          await updateEventUserDetails(id, updates);
           return res.status(200).json({ msg: "User profile updated" });
         }
         break;
@@ -150,6 +212,33 @@ const updateUser = async (req, res) => {
   }
 };
 
+const updateEventUserDetails = async (userId, updates) => {
+  try {
+    await eventSchema.updateMany(
+      {
+        $or: [
+          { "organizers._id": userId },
+          { "staff._id": userId },
+          { "artists._id": userId },
+        ],
+      },
+      {
+        $set: {
+          "organizers.$[elem]": updates,
+          "staff.$[elem]": updates,
+          "artists.$[elem]": updates,
+        },
+      },
+      {
+        arrayFilters: [{ "elem._id": userId }],
+        multi: true,
+      }
+    );
+  } catch (error) {
+    console.error("Error updating event user details:", error);
+  }
+};
+
 // Controller function to get user info
 const getInfo = async (req, res) => {
   const { field } = req.query; // Requested field
@@ -160,7 +249,9 @@ const getInfo = async (req, res) => {
   }
 
   try {
-    const user = await userSchema.findById(currentUser.userId); // Find user by ID
+    const user = await userSchema
+      .findById(currentUser.userId)
+      .select("-password"); // Find user by ID
     if (!user) {
       return res.status(404).json({ msg: "User not found!" });
     }
@@ -169,10 +260,7 @@ const getInfo = async (req, res) => {
       return res.status(401).json({ msg: "Unauthorized user!" });
     }
 
-    const userWithoutPassword = { ...user.toObject() }; // Convert user to plain object and remove password
-    delete userWithoutPassword.password;
-
-    const response = { user: userWithoutPassword };
+    const response = { user };
 
     // Retrieve different user info based on the requested field
     if (!field || field === "all" || field === "myEvents") {
@@ -188,17 +276,15 @@ const getInfo = async (req, res) => {
 
     if (!field || field === "all" || field === "myTickets") {
       response.tickets = await purchaseSchema
-        .find({ "user.endUser.userId": currentUser.userId })
+        .find({ "user.endUser.userId": currentUser?.userId })
         .sort({ createdAt: -1 });
     }
 
     if (!field || field === "all" || field === "favEvents") {
-      const allEvents = await eventSchema.find();
-      response.favEvents = allEvents.filter(
-        (event) =>
-          user.likedEvents.includes(event._id) ||
-          user.goingToEvents.includes(event._id)
-      );
+      response.favEvents = await eventSchema.find({
+        _id: { $in: user.likedEvents.concat(user.goingToEvents) },
+      });
+      // .sort({ createdAt: -1 });
     }
 
     if (!field || field === "all" || field === "favVenues") {
@@ -253,8 +339,3 @@ const registerArtist = async (req, res) => {
 };
 
 module.exports = { getInfo, updateUser, deleteAccount, registerArtist };
-
-
-
-
-

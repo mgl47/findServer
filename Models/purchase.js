@@ -28,10 +28,13 @@ const purchaseSchema = new mongoose.Schema(
       type: String,
     },
     validated: {
-      type: String, 
+      type: String,
     },
     uri: {
       type: String,
+    },
+    date: {
+      type: Object,
     },
 
     tickets: {

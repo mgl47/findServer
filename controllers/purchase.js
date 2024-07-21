@@ -1,22 +1,51 @@
 const purchaseSchema = require("../models/purchase");
 const eventSchema = require("../models/event");
 const userSchema = require("../models/user");
-
+const mongoose = require("mongoose");
+const nodemailer = require("nodemailer");
 const buyTickets = async (req, res, next) => {
   const { id } = req.params;
   const currentUser = req.user;
   const { details, userUpdates, operation } = req.body;
   const addedCoupon = details?.transaction?.coupon;
   const invalidTickets = [];
+  const user = await userSchema.findById(currentUser?.userId);
+  //
 
-  const endUser =
-    operation?.task === "gift" || operation?.task === "doorPurchase"
-      ? details?.user?.endUser
-      : currentUser;
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // Use `true` for port 465, `false` for all other ports
+    auth: {
+      user: "txusco99@gmail.com",
+      pass: "dwqiyzlhfjqyudki",
+    },
+  });
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    const event = await eventSchema.findById(details?.event?._id);
+    const user = await userSchema
+      .findById(currentUser?.userId)
+      .session(session);
+    if (!user) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ msg: "Usuário não encontrado!" });
+    }
+
+    const endUser =
+      operation?.task === "gift" || operation?.task === "doorPurchase"
+        ? details?.user?.endUser
+        : currentUser;
+
+    const event = await eventSchema
+      .findById(operation?.eventId)
+      .session(session);
     if (!details?.tickets || !event?.tickets) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(400)
         .json({ msg: "Evento ou Bilhetes não encontrados!", restart: true });
@@ -36,6 +65,8 @@ const buyTickets = async (req, res, next) => {
       if (matchedCoupon) {
         matchedCoupon.coupon.quantity -= 1;
       } else {
+        await session.abortTransaction();
+        session.endSession();
         return res
           .status(401)
           .json({ msg: "Coupon Inválido ou indisponível!" });
@@ -59,49 +90,52 @@ const buyTickets = async (req, res, next) => {
     });
 
     if (invalidTickets.length > 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(401).json({
         msg: `The selected quantity for the ticket "${invalidTickets?.[0]}" exceeds the available quantity. Please try again!`,
         restart: true,
       });
     }
 
-    const newPurchase = await purchaseSchema.create(details);
+    const newPurchase = await purchaseSchema.create([details], { session });
 
-    // Update interested and going users
-    const updateInterested = [...event.interestedUsers];
-    const updateGoingUsers = [...event.goingUsers];
-
-    if (updateInterested.includes(endUser.userId)) {
-      updateInterested.splice(updateInterested.indexOf(endUser.userId), 1);
-    }
-
-    if (!updateGoingUsers.includes(endUser.userId)) {
-      updateGoingUsers.push(endUser.userId);
-    }
-
-    const newAttendees = [...event.attendees, ...details.tickets];
-
-    const updateQuery = {
-      goingUsers: updateGoingUsers,
-      interestedUsers: updateInterested,
-      attendees: newAttendees,
-      tickets: updatedEventTickets,
-    };
-
-    await event.updateOne({ $set: updateQuery }, { new: true });
-
-    await userSchema.findByIdAndUpdate(currentUser?.userId, {
-      userUpdates,
-      $inc: {
-        "balance.amount": -details.total,
-        // "balance.amount": addedCoupon
-        //   ? -(details.total - addedCoupon?.value)
-        //   : -details.total,
+    await event.updateOne(
+      { _id: operation?.eventId },
+      {
+        $set: { tickets: updatedEventTickets },
+        $addToSet: { goingUsers: endUser?.userId },
+        $pull: { interestedUsers: endUser?.userId },
       },
-    });
+      { session }
+    );
+
+    await userSchema.updateOne(
+      { _id: currentUser?.userId },
+      {
+        $inc: { "balance.amount": -details.total },
+        $pull: { likedEvents: operation?.eventId },
+        $addToSet: { goingToEvents: operation?.eventId },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+    // const info = await transporter.sendMail({
+    //   // from: '"Maddison Foo Koch 👻" <maddison53@ethereal.email>', // sender address
+    //   to: "miguelstuffs@gmail.com", // list of receivers
+    //   subject: "Hello ✔", // Subject line
+    //   text: "Hello world?", // plain text body
+    //   html: "<b>Hello world?</b>", // html body
+    // });
+
+    // console.log("Message sent: %s", info.messageId);
 
     return res.status(200).json(newPurchase);
   } catch (error) {
+    // await session.abortTransaction();
+    // session.endSession();
     console.error(error);
     return res.status(500).json({ msg: "Error processing purchase" });
   }
@@ -109,11 +143,9 @@ const buyTickets = async (req, res, next) => {
 
 const checkInAttendee = async (req, res) => {
   try {
-    // Extract parameters and body data from the request
     const { id } = req.params;
     const { uuid, exiting, checkedAt, exitingTime, currentDate } = req.body;
 
-    // Convert current date string to a Date object
     {
       /*
  day1 
@@ -127,9 +159,9 @@ const checkInAttendee = async (req, res) => {
 */
     }
 
-    const currentDate2 = new Date("2024-06-11T09:00:00.000Z");
+    // const currentDate2 = new Date("2024-06-11T09:00:00.000Z");
 
-    // const currentDate2 = new Date(currentDate);
+    const currentDate2 = new Date(currentDate);
     const now = new Date();
 
     // Find the attendee based on event ID and ticket UUID
@@ -145,7 +177,7 @@ const checkInAttendee = async (req, res) => {
     console.log(pastEvenent);
 
     // If attendee is not found, return a 404 response
-    if (!attendee||pastEvenent) {
+    if (!attendee || pastEvenent) {
       return res.status(200).json({
         msg: "Este bilhete é inválido ou não pertence a este evento!",
         state: "invalidTicket",
@@ -308,10 +340,27 @@ const checkInAttendee = async (req, res) => {
 
 const getAttendees = async (req, res) => {
   try {
+    const { username } = req.user;
     const { eventId } = req.query;
+    console.log(username);
 
-    console.log(eventId);
-    const event = await purchaseSchema.find({ "event._id": eventId });
+    const event = await purchaseSchema.find({
+      _id: eventId,
+
+      // $or: [
+      //   {
+      //     "event.createdBy.username": username,
+      //   },
+      //   {
+      //     "event.organizer.username": username,
+      //     //to fix---fitlter by role
+      //   },
+      // ],
+    });
+
+    if (!event) {
+      return res.status(404).json({ msg: "Evento não encontrado" });
+    }
     return res.status(200).json(event);
   } catch (error) {
     console.error("Error getting attendees:", error);

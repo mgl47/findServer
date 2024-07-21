@@ -36,21 +36,22 @@ const users = async (req, res) => {
 const searchUsers = async (req, res) => {
   const { search } = req.query;
 
-  let aggregateStages = [
+  // Aggregate pipeline
+  const aggregateStages = [
     {
       $search: {
         index: "userSearch",
         text: {
           query: search,
           path: ["displayName", "username", "userDescription"],
-          // path: "title",
         },
       },
     },
     {
-      $limit: 5,
+      $match: {
+        $or: [{ "status.isOrganizer": true }, { "status.isArtist": true }],
+      },
     },
-
     {
       $project: {
         goingToEvents: 0,
@@ -58,21 +59,23 @@ const searchUsers = async (req, res) => {
         password: 0,
         balance: 0,
         followedVenues: 0,
-        updatedAt: 0,
-        updatedAt: 0,
-        updatedAt: 0,
+        updatedAt: 0, // Only needed once
       },
     },
+    {
+      $limit: 5,
+    },
   ];
+
   try {
-    const users = await userSchema.aggregate(aggregateStages);
-    console.log(users);
+    const users = await userSchema.aggregate(aggregateStages).exec();
 
     return res.status(200).json(users);
   } catch (error) {
-    console.log("Error retrieving events:", error);
-    return res.status(500).json({ msg: "Error retrieving events" });
+    console.log("Error retrieving users:", error);
+    return res.status(500).json({ msg: "Error retrieving users" });
   }
 };
+
 
 module.exports = { users, searchUsers };
